@@ -50,7 +50,6 @@ func push(t *testing.T, rng *rand.Rand, q *Queue, batchIdx int64) {
 		burstOff := (idx / burstSize) * int64(10*time.Millisecond)
 		key := keyOff + batchOff + burstOff + int64(idx%burstSize)
 
-		// TODO: BUG: blob size may not be zero!
 		blobSize := rng.Intn(100) + 1
 		blob := make([]byte, blobSize)
 
@@ -139,10 +138,10 @@ func ack(t *testing.T, rng *rand.Rand, waiting, unacked *Queue) {
 
 	var err error
 
-	_, err = waiting.DeleteLowerThan(waitingOff + deleteOff)
+	_, err = waiting.Delete(-1, waitingOff+deleteOff)
 	require.NoError(t, err)
 
-	_, err = unacked.DeleteLowerThan(unackedOff + deleteOff)
+	_, err = unacked.Delete(-1, unackedOff+deleteOff)
 	require.NoError(t, err)
 }
 

@@ -1,0 +1,46 @@
+version: '3'
+
+tasks:
+  default:
+    deps: [build]
+
+  build:
+    cmds:
+      - go build -o timeq ./cmd
+    sources:
+      - ./**.go
+
+  lint:
+    cmds:
+      - golangci-lint run ./...
+
+  cover:
+    deps: [test_all]
+    cmds:
+      - go tool cover -html cover.out
+
+  sloc:
+    silent: true
+    cmds:
+      - cloc --json $(find -iname '*.go' ! -iname '*_test.go') | jq '.Go.code' | xargs -n1 printf "Actual code:\t%d Lines\n"
+      - cloc --json $(find -iname '*_test.go') | jq '.Go.code' | xargs -n1 printf "Test cases:\t%d Lines\n"
+      - cloc --json $(find -iname '*.go') | jq '.Go.code' | xargs -n1 printf "Total code:\t%d Lines\n"
+
+  fuzz:
+    cmds:
+      - go test -v -fuzztime 5m -fuzz ./
+
+  bench:
+    cmds:
+      - sudo sh -c 'sync && echo 3 > /proc/sys/vm/drop_caches'
+      - go test -v -bench=. -run=xxx -benchmem -cpuprofile=cpu.pprof -memprofile=mem.pprof
+      - go tool pprof -web ./cpu.pprof
+      - go tool pprof -web ./mem.pprof
+
+  test:
+    cmds:
+      - ./run_tests.sh
+
+  test-all:
+    cmds:
+      - ./run_tests.sh --slow

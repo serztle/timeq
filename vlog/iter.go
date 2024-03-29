@@ -4,10 +4,10 @@ import (
 	"github.com/sahib/timeq/item"
 )
 
-// TODO: Can we reduce the size of Iter so it fits in a cache line?
-// This should make peek() quite a bit faster.
+// NOTE: There is quite some performance potential hidden here,
+// if we manage to fit Iter in a single cache line:
 //
-// Possible ideas to get down from 104:
+// Possible ideas to get down from 104 to 64:
 //
 //   - Use only one len field. -> -8
 //   - Always pass Item out on Next() as out param. -> -32

@@ -3,3 +3,4 @@ timeq
 *.pprof
 *.test
 cover
+.task/checksum

@@ -1000,6 +1000,27 @@ func TestAPINegativKeys(t *testing.T) {
 	require.NoError(t, queue.Close())
 }
 
+func TestAPIZeroLengthPayload(t *testing.T) {
+	dir, err := os.MkdirTemp("", "timeq-apitest")
+	require.NoError(t, err)
+	defer os.RemoveAll(dir)
+
+	queue, err := Open(dir, DefaultOptions())
+	require.NoError(t, err)
+
+	exp := Items{
+		Item{
+			Key:  123,
+			Blob: []byte{},
+		},
+	}
+	require.NoError(t, queue.Push(exp))
+
+	got, err := PopCopy(queue, 1)
+	require.NoError(t, err)
+	require.Equal(t, exp, got)
+}
+
 // TODO: Better testing for negative prio keys.
 // TODO: Test for bucket deletion on RemoveFork() and bucket deletion when all forks empty.
 // TODO: Remove Move/Peek and make function return a boolean to indicate what to to with the
