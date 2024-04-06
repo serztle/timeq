@@ -6,13 +6,12 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/sahib/timeq/bucket"
 	"github.com/sahib/timeq/item"
 	"github.com/sahib/timeq/item/testutils"
 	"github.com/stretchr/testify/require"
 )
 
-func benchmarkPushPopWithSyncMode(b *testing.B, benchmarkPush bool, syncMode bucket.SyncMode) {
+func benchmarkPushPopWithSyncMode(b *testing.B, benchmarkPush bool, syncMode SyncMode) {
 	dir, err := os.MkdirTemp("", "timeq-buckettest")
 	require.NoError(b, err)
 	defer os.RemoveAll(dir)
@@ -61,7 +60,7 @@ func benchmarkPushPopWithSyncMode(b *testing.B, benchmarkPush bool, syncMode buc
 		// The "-1" is to avoid deleting the bucket over and over.
 		// We want to benchmark the actual pop and not the deletion
 		// on empty buckets (to make it comparable to previous bench numbers).
-		err = queue.Pop(len(items)-1, dstItems[:0], nil)
+		err = queue.Read(len(items)-1, dstItems[:0], nil)
 		if !benchmarkPush {
 			b.StopTimer()
 		}
@@ -72,14 +71,14 @@ func benchmarkPushPopWithSyncMode(b *testing.B, benchmarkPush bool, syncMode buc
 	require.NoError(b, queue.Close())
 }
 
-func BenchmarkPopSyncNone(b *testing.B)   { benchmarkPushPopWithSyncMode(b, false, bucket.SyncNone) }
-func BenchmarkPopSyncData(b *testing.B)   { benchmarkPushPopWithSyncMode(b, false, bucket.SyncData) }
-func BenchmarkPopSyncIndex(b *testing.B)  { benchmarkPushPopWithSyncMode(b, false, bucket.SyncIndex) }
-func BenchmarkPopSyncFull(b *testing.B)   { benchmarkPushPopWithSyncMode(b, false, bucket.SyncFull) }
-func BenchmarkPushSyncNone(b *testing.B)  { benchmarkPushPopWithSyncMode(b, true, bucket.SyncNone) }
-func BenchmarkPushSyncData(b *testing.B)  { benchmarkPushPopWithSyncMode(b, true, bucket.SyncData) }
-func BenchmarkPushSyncIndex(b *testing.B) { benchmarkPushPopWithSyncMode(b, true, bucket.SyncIndex) }
-func BenchmarkPushSyncFull(b *testing.B)  { benchmarkPushPopWithSyncMode(b, true, bucket.SyncFull) }
+func BenchmarkPopSyncNone(b *testing.B)   { benchmarkPushPopWithSyncMode(b, false, SyncNone) }
+func BenchmarkPopSyncData(b *testing.B)   { benchmarkPushPopWithSyncMode(b, false, SyncData) }
+func BenchmarkPopSyncIndex(b *testing.B)  { benchmarkPushPopWithSyncMode(b, false, SyncIndex) }
+func BenchmarkPopSyncFull(b *testing.B)   { benchmarkPushPopWithSyncMode(b, false, SyncFull) }
+func BenchmarkPushSyncNone(b *testing.B)  { benchmarkPushPopWithSyncMode(b, true, SyncNone) }
+func BenchmarkPushSyncData(b *testing.B)  { benchmarkPushPopWithSyncMode(b, true, SyncData) }
+func BenchmarkPushSyncIndex(b *testing.B) { benchmarkPushPopWithSyncMode(b, true, SyncIndex) }
+func BenchmarkPushSyncFull(b *testing.B)  { benchmarkPushPopWithSyncMode(b, true, SyncFull) }
 
 var globItems Items
 

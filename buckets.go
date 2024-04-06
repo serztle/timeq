@@ -1,4 +1,4 @@
-package bucket
+package timeq
 
 import (
 	"errors"
@@ -14,7 +14,7 @@ import (
 	"github.com/tidwall/btree"
 )
 
-// trailerKey is the key to access a index.Trailer for a certain bucket.
+// trailerKey is the key to access a index.Trailer for a certain
 // Buckets that are not loaded have some info that is easily accessible without
 // loading them fully (i.e. the len). Since the Len can be different for each
 // fork we need to keep it for each one separately.
@@ -23,16 +23,16 @@ type trailerKey struct {
 	fork ForkName
 }
 
-type Buckets struct {
+type buckets struct {
 	mu       sync.Mutex
 	dir      string
-	tree     btree.Map[item.Key, *Bucket]
+	tree     btree.Map[item.Key, *bucket]
 	trailers map[trailerKey]index.Trailer
 	opts     Options
 	forks    []ForkName
 }
 
-func LoadAll(dir string, opts Options) (*Buckets, error) {
+func LoadAll(dir string, opts Options) (*buckets, error) {
 	if err := os.MkdirAll(dir, 0700); err != nil {
 		return nil, fmt.Errorf("mkdir: %w", err)
 	}
@@ -43,7 +43,7 @@ func LoadAll(dir string, opts Options) (*Buckets, error) {
 	}
 
 	var dirsHandled int
-	tree := btree.Map[item.Key, *Bucket]{}
+	tree := btree.Map[item.Key, *bucket]{}
 	trailers := make(map[trailerKey]index.Trailer, len(ents))
 	for _, ent := range ents {
 		if !ent.IsDir() {
@@ -82,7 +82,7 @@ func LoadAll(dir string, opts Options) (*Buckets, error) {
 		return nil, fmt.Errorf("%s is not empty; refusing to create db", dir)
 	}
 
-	bs := &Buckets{
+	bs := &buckets{
 		dir:      dir,
 		tree:     tree,
 		opts:     opts,
@@ -102,7 +102,7 @@ func LoadAll(dir string, opts Options) (*Buckets, error) {
 // of the key func. Failure here indicates that the key function changed. No error
 // does not guarantee that the key func did not change though (e.g. the identity func
 // would produce no error in this check)
-func (bs *Buckets) ValidateBucketKeys(bucketFn func(item.Key) item.Key) error {
+func (bs *buckets) ValidateBucketKeys(bucketFn func(item.Key) item.Key) error {
 	for iter := bs.tree.Iter(); iter.Next(); {
 		ik := iter.Key()
 		bk := bucketFn(ik)
@@ -119,14 +119,14 @@ func (bs *Buckets) ValidateBucketKeys(bucketFn func(item.Key) item.Key) error {
 	return nil
 }
 
-func (bs *Buckets) buckPath(key item.Key) string {
+func (bs *buckets) buckPath(key item.Key) string {
 	return filepath.Join(bs.dir, key.String())
 }
 
 // forKey returns a bucket for the specified key and creates if not there yet.
-// `key` must be the lowest key that is stored in this bucket. You cannot just
-// use a key that is somewhere in the bucket.
-func (bs *Buckets) forKey(key item.Key) (*Bucket, error) {
+// `key` must be the lowest key that is stored in this  You cannot just
+// use a key that is somewhere in the
+func (bs *buckets) forKey(key item.Key) (*bucket, error) {
 	buck, _ := bs.tree.Get(key)
 	if buck != nil {
 		// fast path:
@@ -139,7 +139,7 @@ func (bs *Buckets) forKey(key item.Key) (*Bucket, error) {
 	}
 
 	var err error
-	buck, err = Open(bs.buckPath(key), bs.forks, bs.opts)
+	buck, err = openBucket(bs.buckPath(key), bs.forks, bs.opts)
 	if err != nil {
 		return nil, err
 	}
@@ -148,7 +148,7 @@ func (bs *Buckets) forKey(key item.Key) (*Bucket, error) {
 	return buck, nil
 }
 
-func (bs *Buckets) delete(key item.Key) error {
+func (bs *buckets) delete(key item.Key) error {
 	buck, ok := bs.tree.Get(key)
 	if !ok {
 		return fmt.Errorf("no bucket with key %v", key)
@@ -176,11 +176,11 @@ func (bs *Buckets) delete(key item.Key) error {
 	return errors.Join(err, removeBucketDir(dir, bs.forks))
 }
 
-type IterMode int
+type iterMode int
 
 const (
 	// IncludeNil goes over all buckets, including those that are nil (not loaded.)
-	IncludeNil = IterMode(iota)
+	IncludeNil = iterMode(iota)
 
 	// LoadedOnly iterates over all buckets that were loaded already.
 	LoadedOnly
@@ -199,7 +199,7 @@ var IterStop = errors.New("iteration stopped")
 // Iter() will return nil and will also stop the iteration. Note that Iter() honors the
 // MaxParallelOpenBuckets option, i.e. when the mode is `Load` it will immediately close
 // old buckets again before proceeding.
-func (bs *Buckets) iter(mode IterMode, fn func(key item.Key, b *Bucket) error) error {
+func (bs *buckets) iter(mode iterMode, fn func(key item.Key, b *bucket) error) error {
 	// NOTE: We cannot directly iterate over the tree here, we need to make a copy
 	// of they keys, as the btree library does not like if the tree is modified during iteration.
 	// Modifications can happen in forKey() (which might close unused buckets) or in the user-supplied
@@ -243,12 +243,12 @@ func (bs *Buckets) iter(mode IterMode, fn func(key item.Key, b *Bucket) error) e
 	return nil
 }
 
-func (bs *Buckets) Sync() error {
+func (bs *buckets) Sync() error {
 	var err error
 	bs.mu.Lock()
 	defer bs.mu.Unlock()
 
-	_ = bs.iter(LoadedOnly, func(_ item.Key, b *Bucket) error {
+	_ = bs.iter(LoadedOnly, func(_ item.Key, b *bucket) error {
 		// try to sync as much as possible:
 		err = errors.Join(err, b.Sync(true))
 		return nil
@@ -257,14 +257,14 @@ func (bs *Buckets) Sync() error {
 	return err
 }
 
-func (bs *Buckets) Clear() error {
+func (bs *buckets) Clear() error {
 	bs.mu.Lock()
 	defer bs.mu.Unlock()
 
 	return bs.clear()
 }
 
-func (bs *Buckets) clear() error {
+func (bs *buckets) clear() error {
 	keys := bs.tree.Keys()
 	for _, key := range keys {
 		if err := bs.delete(key); err != nil {
@@ -275,21 +275,21 @@ func (bs *Buckets) clear() error {
 	return nil
 }
 
-func (bs *Buckets) Close() error {
+func (bs *buckets) Close() error {
 	bs.mu.Lock()
 	defer bs.mu.Unlock()
 
-	return bs.iter(LoadedOnly, func(_ item.Key, b *Bucket) error {
+	return bs.iter(LoadedOnly, func(_ item.Key, b *bucket) error {
 		return b.Close()
 	})
 }
 
-func (bs *Buckets) Len(fork ForkName) int {
+func (bs *buckets) Len(fork ForkName) int {
 	var len int
 	bs.mu.Lock()
 	defer bs.mu.Unlock()
 
-	_ = bs.iter(IncludeNil, func(key item.Key, b *Bucket) error {
+	_ = bs.iter(IncludeNil, func(key item.Key, b *bucket) error {
 		if b == nil {
 			trailer, ok := bs.trailers[trailerKey{
 				Key:  key,
@@ -312,7 +312,7 @@ func (bs *Buckets) Len(fork ForkName) int {
 	return len
 }
 
-func (bs *Buckets) Shovel(dstBs *Buckets, fork ForkName) (int, error) {
+func (bs *buckets) Shovel(dstBs *buckets, fork ForkName) (int, error) {
 	bs.mu.Lock()
 	defer bs.mu.Unlock()
 
@@ -322,7 +322,7 @@ func (bs *Buckets) Shovel(dstBs *Buckets, fork ForkName) (int, error) {
 	buf := make(item.Items, 0, 2000)
 
 	var ntotalcopied int
-	err := bs.iter(IncludeNil, func(key item.Key, _ *Bucket) error {
+	err := bs.iter(IncludeNil, func(key item.Key, _ *bucket) error {
 		if _, ok := dstBs.tree.Get(key); !ok {
 			// fast path: We can just move the bucket directory.
 			dstPath := dstBs.buckPath(key)
@@ -343,13 +343,12 @@ func (bs *Buckets) Shovel(dstBs *Buckets, fork ForkName) (int, error) {
 			}
 
 			// TODO: write tests for this.
-			fmt.Println(fork)
 			return moveFileOrDir(srcPath, dstPath)
 			//return moveBucketOffline(srcPath, dstPath, fork)
 		}
 
 		// In this case we have to copy the items more intelligently,
-		// since we have to append it to the destination bucket.
+		// since we have to append it to the destination
 
 		srcBuck, err := bs.forKey(key)
 		if err != nil {
@@ -362,10 +361,14 @@ func (bs *Buckets) Shovel(dstBs *Buckets, fork ForkName) (int, error) {
 			return err
 		}
 
-		_, ncopied, err := srcBuck.Move(math.MaxInt, buf[:0], dstBuck, fork)
-		ntotalcopied += ncopied
+		return srcBuck.Read(math.MaxInt, buf[:0], fork, func(items item.Items) (ReadOp, error) {
+			if err := dstBuck.Push(items, true, fork); err != nil {
+				return ReadOpPeek, err
+			}
 
-		return err
+			ntotalcopied += len(items)
+			return ReadOpPop, nil
+		})
 	})
 
 	if err != nil {
@@ -379,9 +382,9 @@ func (bs *Buckets) Shovel(dstBs *Buckets, fork ForkName) (int, error) {
 	return ntotalcopied, err
 }
 
-func (bs *Buckets) nloaded() int {
+func (bs *buckets) nloaded() int {
 	var nloaded int
-	bs.tree.Scan(func(_ item.Key, buck *Bucket) bool {
+	bs.tree.Scan(func(_ item.Key, buck *bucket) bool {
 		if buck != nil {
 			nloaded++
 		}
@@ -394,7 +397,7 @@ func (bs *Buckets) nloaded() int {
 // closeUnused closes as many buckets as needed to reach `maxBucks` total loaded buckets.
 // The closed buckets are marked as nil and can be loaded again afterwards.
 // If `maxBucks` is negative, this is a no-op.
-func (bs *Buckets) closeUnused(maxBucks int) error {
+func (bs *buckets) closeUnused(maxBucks int) error {
 	if maxBucks < 0 {
 		// This disables this feature. You likely do not want that.
 		return nil
@@ -429,28 +432,27 @@ func (bs *Buckets) closeUnused(maxBucks int) error {
 			realIdx = pivotIdx + idx/2
 		}
 
-		key, bucket, ok := bs.tree.GetAt(realIdx)
+		key, buck, ok := bs.tree.GetAt(realIdx)
 		if !ok {
 			// should not happen, but better be safe.
 			continue
 		}
 
-		if bucket == nil {
+		if buck == nil {
 			// already closed.
 			continue
 		}
 
 		// We need to store the trailers of each fork, so we know how to
 		// calculcate the length of the queue without having to load everything.
-		bucket.Trailers(func(fork ForkName, trailer index.Trailer) {
+		buck.Trailers(func(fork ForkName, trailer index.Trailer) {
 			bs.trailers[trailerKey{
 				Key:  key,
 				fork: fork,
 			}] = trailer
 		})
 
-		// trailer := bucket.idx.Trailer()
-		if err := bucket.Close(); err != nil {
+		if err := buck.Close(); err != nil {
 			switch bs.opts.ErrorMode {
 			case ErrorModeAbort:
 				closeErrs = errors.Join(closeErrs, err)
@@ -496,7 +498,7 @@ func binsplit(items item.Items, comp item.Key, fn func(item.Key) item.Key) int {
 }
 
 // Push pushes a batch of `items` to the queue.
-func (bs *Buckets) Push(items item.Items) error {
+func (bs *buckets) Push(items item.Items) error {
 	if len(items) == 0 {
 		return nil
 	}
@@ -536,21 +538,11 @@ func (bs *Buckets) Push(items item.Items) error {
 	return nil
 }
 
-// ReadOp define the kind of operation done by the Read() function.
-type ReadOp int
-
-const (
-	ReadOpPeek = 0
-	ReadOpPop  = 1
-	ReadOpMove = 2
-)
-
-type ReadFn func(items item.Items) error
-
+// TODO: Could Peek() cause an endless loop here since it does not pop anything?
 // Read handles all kind of reading operations. It is a low-level function that is not part of the official API.
-func (bs *Buckets) Read(op ReadOp, n int, dst item.Items, fork ForkName, fn ReadFn, dstBs *Buckets) error {
+func (bs *buckets) Read(n int, dst item.Items, fork ForkName, fn ReadOpFn) error {
 	if n < 0 {
-		// use max value in this case:
+		// use max value to select all.
 		n = int(^uint(0) >> 1)
 	}
 
@@ -558,31 +550,9 @@ func (bs *Buckets) Read(op ReadOp, n int, dst item.Items, fork ForkName, fn Read
 	defer bs.mu.Unlock()
 
 	var count = n
-	return bs.iter(Load, func(key item.Key, b *Bucket) error {
-		// Choose the right func for the operation:
-		var opFn func(n int, dst item.Items, fork ForkName) (item.Items, int, error)
-		switch op {
-		case ReadOpPop:
-			opFn = b.Pop
-		case ReadOpPeek:
-			opFn = b.Peek
-		case ReadOpMove:
-			// Move() has a slightly different signature, so adapter is needed.
-			opFn = func(count int, dst item.Items, fork ForkName) (item.Items, int, error) {
-				dstBuck, err := dstBs.forKey(b.key)
-				if err != nil {
-					return dst, 0, nil
-				}
-
-				return b.Move(count, dst, dstBuck, fork)
-			}
-		default:
-			// programmer error
-			panic("invalid op")
-		}
-
-		items, nitems, err := opFn(count, dst, fork)
-		if err != nil {
+	return bs.iter(Load, func(key item.Key, b *bucket) error {
+		lenBefore := b.Len(fork)
+		if err := b.Read(count, dst, fork, fn); err != nil {
 			if bs.opts.ErrorMode == ErrorModeAbort {
 				return err
 			}
@@ -592,22 +562,15 @@ func (bs *Buckets) Read(op ReadOp, n int, dst item.Items, fork ForkName, fn Read
 			return nil
 		}
 
-		var fnErr error
-		if len(items) > 0 && fn != nil {
-			fnErr = fn(items)
-		}
-
 		if b.AllEmpty() {
 			if err := bs.delete(key); err != nil {
 				return fmt.Errorf("failed to delete bucket: %w", err)
 			}
 		}
 
-		if fnErr != nil {
-			return fnErr
-		}
+		lenAfter := b.Len(fork)
 
-		count -= nitems
+		count -= (lenBefore - lenAfter)
 		if count <= 0 {
 			return IterStop
 		}
@@ -616,7 +579,7 @@ func (bs *Buckets) Read(op ReadOp, n int, dst item.Items, fork ForkName, fn Read
 	})
 }
 
-func (bs *Buckets) Delete(fork ForkName, from, to item.Key) (int, error) {
+func (bs *buckets) Delete(fork ForkName, from, to item.Key) (int, error) {
 	var numDeleted int
 	var deletableBucks []item.Key
 
@@ -689,7 +652,7 @@ func (bs *Buckets) Delete(fork ForkName, from, to item.Key) (int, error) {
 	return numDeleted, nil
 }
 
-func (bs *Buckets) Fork(src, dst ForkName) error {
+func (bs *buckets) Fork(src, dst ForkName) error {
 	if err := dst.Validate(); err != nil {
 		return err
 	}
@@ -699,7 +662,7 @@ func (bs *Buckets) Fork(src, dst ForkName) error {
 		return nil
 	}
 
-	err := bs.iter(IncludeNil, func(key item.Key, buck *Bucket) error {
+	err := bs.iter(IncludeNil, func(key item.Key, buck *bucket) error {
 		if buck != nil {
 			return buck.Fork(src, dst)
 		}
@@ -716,7 +679,7 @@ func (bs *Buckets) Fork(src, dst ForkName) error {
 	return nil
 }
 
-func (bs *Buckets) RemoveFork(fork ForkName) error {
+func (bs *buckets) RemoveFork(fork ForkName) error {
 	bs.mu.Lock()
 	defer bs.mu.Unlock()
 
@@ -729,13 +692,13 @@ func (bs *Buckets) RemoveFork(fork ForkName) error {
 		return fork == candidate
 	})
 
-	return bs.iter(IncludeNil, func(key item.Key, buck *Bucket) error {
+	return bs.iter(IncludeNil, func(key item.Key, buck *bucket) error {
 		if buck != nil {
 			if err := buck.RemoveFork(fork); err != nil {
 				return err
 			}
 
-			// might be empty after deletion, so we can get rid of the bucket.
+			// might be empty after deletion, so we can get rid of the
 			if !buck.AllEmpty() {
 				return nil
 			}
@@ -752,7 +715,7 @@ func (bs *Buckets) RemoveFork(fork ForkName) error {
 	})
 }
 
-func (bs *Buckets) Forks() []ForkName {
+func (bs *buckets) Forks() []ForkName {
 	bs.mu.Lock()
 	defer bs.mu.Unlock()
 
@@ -760,8 +723,8 @@ func (bs *Buckets) Forks() []ForkName {
 }
 
 // fetchForks actually checks the disk to find the current forks.
-func (bs *Buckets) fetchForks() ([]ForkName, error) {
-	var buck *Bucket
+func (bs *buckets) fetchForks() ([]ForkName, error) {
+	var buck *bucket
 	for iter := bs.tree.Iter(); iter.Next(); {
 		buck = iter.Value()
 		if buck == nil {

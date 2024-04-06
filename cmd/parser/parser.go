@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/sahib/timeq"
-	"github.com/sahib/timeq/bucket"
 	"github.com/sahib/timeq/item"
 	"github.com/sahib/timeq/vlog"
 	"github.com/urfave/cli"
@@ -21,13 +20,13 @@ func optionsFromCtx(ctx *cli.Context) (timeq.Options, error) {
 
 	switch mode := ctx.GlobalString("sync-mode"); mode {
 	case "full":
-		opts.SyncMode = bucket.SyncFull
+		opts.SyncMode = timeq.SyncFull
 	case "data":
-		opts.SyncMode = bucket.SyncData
+		opts.SyncMode = timeq.SyncData
 	case "index":
-		opts.SyncMode = bucket.SyncIndex
+		opts.SyncMode = timeq.SyncIndex
 	case "none":
-		opts.SyncMode = bucket.SyncNone
+		opts.SyncMode = timeq.SyncNone
 	default:
 		return opts, fmt.Errorf("invalid sync mode: %s", mode)
 	}
@@ -110,6 +109,17 @@ func Run(args []string) error {
 			Name:   "pop",
 			Usage:  "Get one or several keys",
 			Action: withQueue(handlePop),
+			Flags: []cli.Flag{
+				cli.IntFlag{
+					Name:  "n,number",
+					Usage: "Number of items to pop",
+					Value: 1,
+				},
+			},
+		}, {
+			Name:   "peek",
+			Usage:  "Get one or several keys, but do not remove them.",
+			Action: withQueue(handlePeek),
 			Flags: []cli.Flag{
 				cli.IntFlag{
 					Name:  "n,number",
@@ -232,13 +242,21 @@ func handlePush(ctx *cli.Context, q *timeq.Queue) error {
 }
 
 func handlePop(ctx *cli.Context, q *timeq.Queue) error {
+	return handlePopOrPeek(ctx, q, timeq.ReadOpPop)
+}
+
+func handlePeek(ctx *cli.Context, q *timeq.Queue) error {
+	return handlePopOrPeek(ctx, q, timeq.ReadOpPeek)
+}
+
+func handlePopOrPeek(ctx *cli.Context, q *timeq.Queue, op timeq.ReadOp) error {
 	n := ctx.Int("number")
-	err := q.Pop(n, nil, func(items timeq.Items) error {
+	err := q.Read(n, nil, func(items timeq.Items) (timeq.ReadOp, error) {
 		for _, item := range items {
 			fmt.Println(item)
 		}
 
-		return nil
+		return op, nil
 	})
 
 	if err != nil {

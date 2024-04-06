@@ -1,4 +1,4 @@
-package bucket
+package timeq
 
 import (
 	"errors"
@@ -54,7 +54,7 @@ const (
 	ErrorModeAbort = ErrorMode(iota)
 
 	// ErrorModeContinue tries to progress further in case of errors
-	// by jumping over a faulty bucket or entry in a bucket.
+	// by jumping over a faulty bucket or entry in a
 	// If the error was recoverable, none is returned, but the
 	// Logger in the Options will be called (if set) to log the error.
 	ErrorModeContinue
@@ -76,7 +76,9 @@ func NullLogger() Logger {
 	return &writerLogger{w: io.Discard}
 }
 
-// Options are fine-tuning knobs specific to individual buckets
+// Options gives you some knobs to configure the queue.
+// Read the individual options carefully, as some of them
+// can only be set on the first call to Open()
 type Options struct {
 	// SyncMode controls how often we sync data to the disk. The more data we sync
 	// the more durable is the queue at the cost of throughput.
@@ -92,11 +94,11 @@ type Options struct {
 	// See the individual enum values for more info.
 	ErrorMode ErrorMode
 
-	// BucketFunc defines what key goes to what bucket.
+	// BucketFunc defines what key goes to what
 	// The provided function should clamp the key value to
 	// a common value. Each same value that was returned goes
-	// into the same bucket. The returned value should be also
-	// the minimum key of the bucket.
+	// into the same  The returned value should be also
+	// the minimum key of the
 	//
 	// Example: '(key / 10) * 10' would produce buckets with 10 items.
 	//
@@ -127,6 +129,9 @@ type Options struct {
 	MaxParallelOpenBuckets int
 }
 
+// DefaultOptions give you a set of options that are good to enough to try some
+// experiments. Your mileage can vary a lot with different settings, so make
+// sure to do some benchmarking!
 func DefaultOptions() Options {
 	return Options{
 		SyncMode:               SyncFull,
@@ -137,6 +142,8 @@ func DefaultOptions() Options {
 	}
 }
 
+// DefaultBucketFunc assumes that `key` is a nanosecond unix timestamps
+// and divides data (roughly) in 2m minute buckets.
 var DefaultBucketFunc = ShiftBucketFunc(37)
 
 // ShiftBucketFunc creates a fast BucketFunc that divides data into buckets

@@ -4,7 +4,6 @@ package timeq
 import (
 	"fmt"
 
-	"github.com/sahib/timeq/bucket"
 	"github.com/sahib/timeq/item"
 )
 
@@ -18,39 +17,9 @@ type Items = item.Items
 // Lower keys will be popped first.
 type Key = item.Key
 
-// ReadFn is the type for functions passed to Pop/Move/Peek
-type ReadFn = bucket.ReadFn
-
-// Options gives you some knobs to configure the queue.
-// Read the individual options carefully, as some of them
-// can only be set on the first call to Open()
-type Options = bucket.Options
-
-// DefaultOptions give you a set of options that are good to enough to try some
-// experiments. Your mileage can vary a lot with different settings, so make
-// sure to do some benchmarking!
-var DefaultOptions = bucket.DefaultOptions
-
-// DefaultBucketFunc assumes that `key` is a nanosecond unix timestamps
-// and divides data (roughly) in 2m minute buckets.
-var DefaultBucketFunc = bucket.DefaultBucketFunc
-
-// ShiftBucketFunc creates a fast BucketFunc that divides data into buckets
-// by masking `shift` less significant bits of the key. With a shift
-// of 37 you roughly get 2m buckets (if your key input are nanosecond-timestamps).
-// If you want to calculate the size of a shift, use this formula:
-// (2 ** shift) / (1e9 / 60) = minutes
-var ShiftBucketFunc = bucket.ShiftBucketFunc
-
-// FixedSizeBucketFunc returns a BucketFunc that divides buckets into
-// equal sized buckets with `n` entries. This can also be used to create
-// time-based keys, if you use nanosecond based keys and pass time.Minute
-// to create a buckets with a size of one minute.
-var FixedSizeBucketFunc = bucket.FixedSizeBucketFunc
-
 // Queue is the high level API to the priority queue.
 type Queue struct {
-	buckets *bucket.Buckets
+	buckets *buckets
 }
 
 // Open tries to open the priority queue structure in `dir`.
@@ -61,7 +30,7 @@ func Open(dir string, opts Options) (*Queue, error) {
 		return nil, err
 	}
 
-	bs, err := bucket.LoadAll(dir, opts)
+	bs, err := LoadAll(dir, opts)
 	if err != nil {
 		return nil, fmt.Errorf("buckets: %w", err)
 	}
@@ -78,9 +47,9 @@ func (q *Queue) Push(items Items) error {
 	return q.buckets.Push(items)
 }
 
-// Pop fetches up to `n` items from the queue. It will call the supplied `fn`
+// Read fetches up to `n` items from the queue. It will call the supplied `fn`
 // one or several times until either `n` is reached or the queue is empty. If
-// the queue is empty before calling Pop(), then `fn` is not called. If `n` is
+// the queue is empty before calling Read(), then `fn` is not called. If `n` is
 // negative, then as many items as possible are returned until the queue is
 // empty.
 //
@@ -92,22 +61,10 @@ func (q *Queue) Push(items Items) error {
 // are directly sliced from a mmap(2). Accessing them outside will
 // almost certainly lead to a crash. If you need them outside (e.g. for
 // appending to a slice) then you can use the Copy() function of Items.
-func (q *Queue) Pop(n int, dst Items, fn ReadFn) error {
-	return q.buckets.Read(bucket.ReadOpPop, n, dst, "", fn, nil)
-}
-
-// Peek works like Pop, but does not delete the items in the queue.
-// Please read the documentation of Pop() too.
-func (q *Queue) Peek(n int, dst Items, fn ReadFn) error {
-	return q.buckets.Read(bucket.ReadOpPeek, n, dst, "", fn, nil)
-}
-
-// Move works like Pop, but it pushes the popped items to `dstQueue` immediately.
-// This implementation is safer than one that is build on this external API,
-// as it deletes the popped data only when the push was successful.
-// Please read the documentation of Pop() too.
-func (q *Queue) Move(n int, dst Items, dstQueue *Queue, fn ReadFn) error {
-	return q.buckets.Read(bucket.ReadOpMove, n, dst, "", fn, dstQueue.buckets)
+//
+// You can return either ReadOpPop or ReadOpPeek from `fn`.
+func (q *Queue) Read(n int, dst Items, fn ReadOpFn) error {
+	return q.buckets.Read(n, dst, "", fn)
 }
 
 // Delete deletes all items in the range `from` to `to`.
@@ -176,42 +133,28 @@ func (q *Queue) Close() error {
 	return q.buckets.Close()
 }
 
-// PopCopy works like a simplified Pop() but copies the items. It is less
-// efficient and should not be used if you care for performance.
+// PopCopy works like a simplified Read() but copies the items and pops them.
+// It is less efficient and should not be used if you care for performance.
 func PopCopy(c Consumer, n int) (Items, error) {
 	var items Items
-	return items, c.Pop(n, nil, func(popped Items) error {
+	return items, c.Read(n, nil, func(popped Items) (ReadOp, error) {
 		items = append(items, popped.Copy()...)
-		return nil
+		return ReadOpPop, nil
 	})
 }
 
-// PeekCopy works like a simplified Peek() but copies the items. It is less
-// efficient and should not be used if you care for performance.
+// PeekCopy works like a simplified Read() but copies the items and does not
+// remove them. It is less efficient and should not be used if you care for
+// performance.
 func PeekCopy(c Consumer, n int) (Items, error) {
 	var items Items
-	return items, c.Peek(n, nil, func(popped Items) error {
+	return items, c.Read(n, nil, func(popped Items) (ReadOp, error) {
 		items = append(items, popped.Copy()...)
-		return nil
-	})
-}
-
-// MoveCopy works like a simplified Move() but copies the items. It is less
-// efficient and should not be used if you care for performance.
-func MoveCopy(c Consumer, n int, dst *Queue) (Items, error) {
-	var items Items
-	return items, c.Move(n, nil, dst, func(popped Items) error {
-		items = append(items, popped.Copy()...)
-		return nil
+		return ReadOpPeek, nil
 	})
 }
 
 /////////////
-
-// ForkName is the name of a fork. This is a special type to make it more
-// explicit that not every string is a valid fork name. Only alphanumeric
-// characters, dashes and underscores are allowed.
-type ForkName = bucket.ForkName
 
 // Fork is an implementation of the Consumer interface for a named fork.
 // See the Fork() method for more explanation.
@@ -220,19 +163,11 @@ type Fork struct {
 	q    *Queue
 }
 
-var (
-	// ErrNoSuchFork is returned whenever the name of a fork is not known,
-	// or if the fork was deleted already.
-	ErrNoSuchFork = bucket.ErrNoSuchFork
-)
-
 // Consumer is an interface that both Fork and Queue implement.
 // It covers every consumer related API. Please refer to the respective
 // Queue methods for details.
 type Consumer interface {
-	Pop(n int, dst Items, fn ReadFn) error
-	Peek(n int, dst Items, fn ReadFn) error
-	Move(n int, dst Items, dstQueue *Queue, fn ReadFn) error
+	Read(n int, dst Items, fn ReadOpFn) error
 	Delete(from, to Key) (int, error)
 	Shovel(dst *Queue) (int, error)
 	Len() int
@@ -242,29 +177,13 @@ type Consumer interface {
 // Check that Queue also implements the Consumer interface.
 var _ Consumer = &Queue{}
 
-// Pop is like Queue.Pop().
-func (f *Fork) Pop(n int, dst Items, fn ReadFn) error {
+// Read is like Queue.Read().
+func (f *Fork) Read(n int, dst Items, fn ReadOpFn) error {
 	if f.q == nil {
 		return ErrNoSuchFork
 	}
 
-	return f.q.buckets.Read(bucket.ReadOpPop, n, dst, f.name, fn, nil)
-}
-
-// Peek is like Queue.Peek().
-func (f *Fork) Peek(n int, dst Items, fn ReadFn) error {
-	if f.q == nil {
-		return ErrNoSuchFork
-	}
-	return f.q.buckets.Read(bucket.ReadOpPeek, n, dst, f.name, fn, nil)
-}
-
-// Move is like Queue.Move().
-func (f *Fork) Move(n int, dst Items, dstQueue *Queue, fn ReadFn) error {
-	if f.q == nil {
-		return ErrNoSuchFork
-	}
-	return f.q.buckets.Read(bucket.ReadOpMove, n, dst, f.name, fn, dstQueue.buckets)
+	return f.q.buckets.Read(n, dst, f.name, fn)
 }
 
 // Len is like Queue.Len().

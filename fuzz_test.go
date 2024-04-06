@@ -41,9 +41,9 @@ func FuzzPushPop(f *testing.F) {
 			return int(i.Key - j.Key)
 		})
 
-		require.NoError(t, queue.Pop(reps*len(items), nil, func(got Items) error {
+		require.NoError(t, queue.Read(reps*len(items), nil, func(got Items) (ReadOp, error) {
 			require.Equal(t, exp, got)
-			return nil
+			return ReadOpPop, nil
 		}))
 
 		require.NoError(t, queue.Close())

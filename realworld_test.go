@@ -89,7 +89,7 @@ func move(t *testing.T, waiting, unacked *Queue) {
 	queueLenBefore := waiting.Len()
 	const popSize = 2000
 	dst := make(Items, popSize)
-	require.NoError(t, waiting.Move(popSize, dst[:0], unacked, func(items Items) error {
+	require.NoError(t, waiting.Read(popSize, dst[:0], func(items Items) (ReadOp, error) {
 		count += len(items)
 
 		for idx, item := range items {
@@ -107,15 +107,13 @@ func move(t *testing.T, waiting, unacked *Queue) {
 			lastKey = item.Key
 		}
 
-		return nil
+		return ReadOpPop, unacked.Push(items)
 	}))
 
 	expect := popSize
 	if popSize > queueLenBefore {
 		expect = queueLenBefore
 	}
-
-	fmt.Println("SHOVEL")
 
 	require.Equal(t, expect, count)
 }
@@ -125,15 +123,15 @@ func ack(t *testing.T, rng *rand.Rand, waiting, unacked *Queue) {
 	deleteOff := Key(rng.Int63n(int64(time.Minute)) - int64(15*time.Second))
 
 	var waitingOff Key
-	require.NoError(t, waiting.Peek(1, nil, func(items Items) error {
+	require.NoError(t, waiting.Read(1, nil, func(items Items) (ReadOp, error) {
 		waitingOff = items[0].Key
-		return nil
+		return ReadOpPeek, nil
 	}))
 
 	var unackedOff Key
-	require.NoError(t, unacked.Peek(1, nil, func(items Items) error {
+	require.NoError(t, unacked.Read(1, nil, func(items Items) (ReadOp, error) {
 		unackedOff = items[0].Key
-		return nil
+		return ReadOpPeek, nil
 	}))
 
 	var err error

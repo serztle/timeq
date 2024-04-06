@@ -1,4 +1,4 @@
-package bucket
+package timeq
 
 import (
 	"errors"
@@ -16,8 +16,19 @@ import (
 )
 
 const (
-	DataLogName = "dat.log"
+	dataLogName = "dat.log"
 )
+
+// ReadOp define the kind of operation done by the Read() function.
+type ReadOp int
+
+const (
+	ReadOpPeek = 0
+	ReadOpPop  = 1
+	ReadOpMove = 2
+)
+
+type ReadOpFn func(items Items) (ReadOp, error)
 
 type ForkName string
 
@@ -36,24 +47,24 @@ func (name ForkName) Validate() error {
 	return nil
 }
 
-type Index struct {
+type bucketIndex struct {
 	Log *index.Writer
 	Mem *index.Index
 }
 
-type Bucket struct {
+type bucket struct {
 	dir     string
 	key     item.Key
 	log     *vlog.Log
 	opts    Options
-	indexes map[ForkName]Index
+	indexes map[ForkName]bucketIndex
 }
 
 var (
 	ErrNoSuchFork = errors.New("no fork with this name")
 )
 
-func (b *Bucket) idxForFork(fork ForkName) (Index, error) {
+func (b *bucket) idxForFork(fork ForkName) (bucketIndex, error) {
 	idx, ok := b.indexes[fork]
 	if !ok {
 		return idx, ErrNoSuchFork
@@ -116,27 +127,27 @@ func idxPath(dir string, fork ForkName) string {
 	return filepath.Join(dir, idxName)
 }
 
-func loadIndex(idxPath string, log *vlog.Log, opts Options) (Index, error) {
+func loadIndex(idxPath string, log *vlog.Log, opts Options) (bucketIndex, error) {
 	mem, err := index.Load(idxPath)
 	if err != nil || (mem.NEntries() == 0 && !log.IsEmpty()) {
 		mem, err = recoverIndexFromLog(&opts, log, idxPath)
 		if err != nil {
-			return Index{}, err
+			return bucketIndex{}, err
 		}
 	}
 
 	idxLog, err := index.NewWriter(idxPath, opts.SyncMode&SyncIndex > 0)
 	if err != nil {
-		return Index{}, fmt.Errorf("index writer: %w", err)
+		return bucketIndex{}, fmt.Errorf("index writer: %w", err)
 	}
 
-	return Index{
+	return bucketIndex{
 		Log: idxLog,
 		Mem: mem,
 	}, nil
 }
 
-func Open(dir string, forks []ForkName, opts Options) (buck *Bucket, outErr error) {
+func openBucket(dir string, forks []ForkName, opts Options) (buck *bucket, outErr error) {
 	if err := os.MkdirAll(dir, 0700); err != nil {
 		return nil, err
 	}
@@ -162,14 +173,14 @@ func Open(dir string, forks []ForkName, opts Options) (buck *Bucket, outErr erro
 
 	defer recoverMmapError(&outErr)
 
-	logPath := filepath.Join(dir, DataLogName)
+	logPath := filepath.Join(dir, dataLogName)
 	log, err := vlog.Open(logPath, opts.SyncMode&SyncData > 0)
 	if err != nil {
 		return nil, fmt.Errorf("open: %w", err)
 	}
 
 	forks = append(forks, "")
-	indexes := make(map[ForkName]Index, len(forks)-1)
+	indexes := make(map[ForkName]bucketIndex, len(forks)-1)
 
 	var entries item.Off
 	for _, fork := range forks {
@@ -188,7 +199,7 @@ func Open(dir string, forks []ForkName, opts Options) (buck *Bucket, outErr erro
 		return nil, err
 	}
 
-	buck = &Bucket{
+	buck = &bucket{
 		dir:     dir,
 		key:     item.Key(key),
 		log:     log,
@@ -215,13 +226,13 @@ func Open(dir string, forks []ForkName, opts Options) (buck *Bucket, outErr erro
 			return nil, fmt.Errorf("remove for reinit: %w", err)
 		}
 
-		return Open(dir, forks, opts)
+		return openBucket(dir, forks, opts)
 	}
 
 	return buck, nil
 }
 
-func (b *Bucket) Sync(force bool) error {
+func (b *bucket) Sync(force bool) error {
 	err := b.log.Sync(force)
 	for _, idx := range b.indexes {
 		err = errors.Join(err, idx.Log.Sync(force))
@@ -230,13 +241,13 @@ func (b *Bucket) Sync(force bool) error {
 	return err
 }
 
-func (b *Bucket) Trailers(fn func(fork ForkName, trailer index.Trailer)) {
+func (b *bucket) Trailers(fn func(fork ForkName, trailer index.Trailer)) {
 	for fork, idx := range b.indexes {
 		fn(fork, idx.Mem.Trailer())
 	}
 }
 
-func (b *Bucket) Close() error {
+func (b *bucket) Close() error {
 	err := b.log.Close()
 	for _, idx := range b.indexes {
 		err = errors.Join(err, idx.Log.Close())
@@ -255,7 +266,7 @@ func recoverMmapError(dstErr *error) {
 }
 
 // Push expects pre-sorted items!
-func (b *Bucket) Push(items item.Items, all bool, name ForkName) (outErr error) {
+func (b *bucket) Push(items item.Items, all bool, name ForkName) (outErr error) {
 	if len(items) == 0 {
 		return nil
 	}
@@ -290,13 +301,13 @@ func (b *Bucket) Push(items item.Items, all bool, name ForkName) (outErr error) 
 	return nil
 }
 
-func (b *Bucket) logAt(loc item.Location) vlog.Iter {
+func (b *bucket) logAt(loc item.Location) vlog.Iter {
 	continueOnErr := b.opts.ErrorMode != ErrorModeAbort
 	return b.log.At(loc, continueOnErr)
 }
 
 // addIter adds a new batchIter to `batchIters` and advances the idxIter.
-func (b *Bucket) addIter(batchIters *vlog.Iters, idxIter *index.Iter) (bool, error) {
+func (b *bucket) addIter(batchIters *vlog.Iters, idxIter *index.Iter) (bool, error) {
 	loc := idxIter.Value()
 	batchIter := b.logAt(loc)
 	if !batchIter.Next() {
@@ -308,76 +319,106 @@ func (b *Bucket) addIter(batchIters *vlog.Iters, idxIter *index.Iter) (bool, err
 	return !idxIter.Next(), nil
 }
 
-func (b *Bucket) Pop(n int, dst item.Items, fork ForkName) (item.Items, int, error) {
+func (b *bucket) Read(n int, dst item.Items, fork ForkName, fn ReadOpFn) error {
 	if n <= 0 {
-		// technically that's a valid use case.
-		return dst, 0, nil
+		// return nothing.
+		return nil
 	}
 
 	idx, err := b.idxForFork(fork)
 	if err != nil {
-		return dst, 0, err
+		return err
 	}
 
-	iters, items, npopped, err := b.peek(n, dst, idx.Mem)
+	iters, items, _, err := b.peek(n, dst, idx.Mem)
 	if err != nil {
-		return items, npopped, err
+		return err
 	}
 
-	if iters != nil {
-		if err := b.popSync(idx, iters); err != nil {
-			return items, npopped, err
+	op, err := fn(items)
+	if err != nil {
+		return err
+	}
+
+	switch op {
+	case ReadOpPop:
+		if iters != nil {
+			if err := b.popSync(idx, iters); err != nil {
+				return err
+			}
 		}
+	case ReadOpPeek:
+		// nothing to do.
 	}
 
-	return items, npopped, nil
+	return nil
 }
 
-func (b *Bucket) Peek(n int, dst item.Items, fork ForkName) (item.Items, int, error) {
-	if n <= 0 {
-		return dst, 0, nil
-	}
-
-	idx, err := b.idxForFork(fork)
-	if err != nil {
-		return dst, 0, err
-	}
-
-	_, items, npopped, err := b.peek(n, dst, idx.Mem)
-	return items, npopped, err
-}
-
-// Move moves data between two buckets in a safer way. In case of
-// crashes the data might be present in the destination queue, but is
-// not yet deleted from the source queue. Callers should be ready to
-// handle duplicates.
-func (b *Bucket) Move(n int, dst item.Items, dstBuck *Bucket, fork ForkName) (item.Items, int, error) {
-	if n <= 0 {
-		// technically that's a valid use case.
-		return dst, 0, nil
-	}
-
-	idx, err := b.idxForFork(fork)
-	if err != nil {
-		return nil, 0, err
-	}
-
-	iters, items, npopped, err := b.peek(n, dst, idx.Mem)
-	if err != nil {
-		return items, npopped, err
-	}
-
-	if dstBuck != nil {
-		if err := dstBuck.Push(items[len(dst):], false, fork); err != nil {
-			return items, npopped, err
-		}
-	}
-
-	return items, npopped, b.popSync(idx, iters)
-}
+// func (b *Bucket) Pop(n int, dst item.Items, fork ForkName) (item.Items, int, error) {
+// 	idx, err := b.idxForFork(fork)
+// 	if err != nil {
+// 		return dst, 0, err
+// 	}
+//
+// 	iters, items, npopped, err := b.peek(n, dst, idx.Mem)
+// 	if err != nil {
+// 		return items, npopped, err
+// 	}
+//
+// 	if iters != nil {
+// 		if err := b.popSync(idx, iters); err != nil {
+// 			return items, npopped, err
+// 		}
+// 	}
+//
+// 	return items, npopped, nil
+// }
+//
+// func (b *Bucket) Peek(n int, dst item.Items, fork ForkName) (item.Items, int, error) {
+// 	if n <= 0 {
+// 		return dst, 0, nil
+// 	}
+//
+// 	idx, err := b.idxForFork(fork)
+// 	if err != nil {
+// 		return dst, 0, err
+// 	}
+//
+// 	_, items, npopped, err := b.peek(n, dst, idx.Mem)
+// 	return items, npopped, err
+// }
+//
+// // Move moves data between two buckets in a safer way. In case of
+// // crashes the data might be present in the destination queue, but is
+// // not yet deleted from the source queue. Callers should be ready to
+// // handle duplicates.
+// func (b *Bucket) Move(n int, dst item.Items, dstBuck *Bucket, fork ForkName) (item.Items, int, error) {
+// 	if n <= 0 {
+// 		// technically that's a valid use case.
+// 		return dst, 0, nil
+// 	}
+//
+// 	idx, err := b.idxForFork(fork)
+// 	if err != nil {
+// 		return nil, 0, err
+// 	}
+//
+// 	iters, items, npopped, err := b.peek(n, dst, idx.Mem)
+// 	if err != nil {
+// 		return items, npopped, err
+// 	}
+//
+// 	if dstBuck != nil {
+// 		if err := dstBuck.Push(items[len(dst):], false, fork); err != nil {
+// 			return items, npopped, err
+// 		}
+// 	}
+//
+// 	return items, npopped, b.popSync(idx, iters)
+// }
 
 // peek reads from the bucket, but does not mark the elements as deleted yet.
-func (b *Bucket) peek(n int, dst item.Items, idx *index.Index) (batchIters *vlog.Iters, outItems item.Items, npopped int, outErr error) {
+func (b *bucket) peek(n int, dst item.Items, idx *index.Index) (batchIters *vlog.Iters, outItems item.Items, npopped int, outErr error) {
 	defer recoverMmapError(&outErr)
 
 	// Fetch the lowest entry of the index:
@@ -444,7 +485,7 @@ func (b *Bucket) peek(n int, dst item.Items, idx *index.Index) (batchIters *vlog
 	return batchIters, dst, numAppends, nil
 }
 
-func (b *Bucket) popSync(idx Index, batchIters *vlog.Iters) error {
+func (b *bucket) popSync(idx bucketIndex, batchIters *vlog.Iters) error {
 	if batchIters == nil || len(*batchIters) == 0 {
 		return nil
 	}
@@ -483,7 +524,7 @@ func (b *Bucket) popSync(idx Index, batchIters *vlog.Iters) error {
 	return idx.Log.Sync(false)
 }
 
-func (b *Bucket) Delete(fork ForkName, from, to item.Key) (ndeleted int, outErr error) {
+func (b *bucket) Delete(fork ForkName, from, to item.Key) (ndeleted int, outErr error) {
 	defer recoverMmapError(&outErr)
 
 	if b.key > to {
@@ -588,7 +629,7 @@ func (b *Bucket) Delete(fork ForkName, from, to item.Key) (ndeleted int, outErr 
 	return ndeleted, errors.Join(pushErr, idx.Log.Sync(false))
 }
 
-func (b *Bucket) AllEmpty() bool {
+func (b *bucket) AllEmpty() bool {
 	for _, idx := range b.indexes {
 		if idx.Mem.Len() > 0 {
 			return false
@@ -598,7 +639,7 @@ func (b *Bucket) AllEmpty() bool {
 	return true
 }
 
-func (b *Bucket) Empty(fork ForkName) bool {
+func (b *bucket) Empty(fork ForkName) bool {
 	idx, err := b.idxForFork(fork)
 	if err != nil {
 		return true
@@ -607,11 +648,11 @@ func (b *Bucket) Empty(fork ForkName) bool {
 	return idx.Mem.Len() == 0
 }
 
-func (b *Bucket) Key() item.Key {
+func (b *bucket) Key() item.Key {
 	return b.key
 }
 
-func (b *Bucket) Len(fork ForkName) int {
+func (b *bucket) Len(fork ForkName) int {
 	idx, err := b.idxForFork(fork)
 	if err != nil {
 		return 0
@@ -620,7 +661,7 @@ func (b *Bucket) Len(fork ForkName) int {
 	return int(idx.Mem.Len())
 }
 
-func (b *Bucket) Fork(src, dst ForkName) error {
+func (b *bucket) Fork(src, dst ForkName) error {
 	srcIdx, err := b.idxForFork(src)
 	if err != nil {
 		return err
@@ -641,7 +682,7 @@ func (b *Bucket) Fork(src, dst ForkName) error {
 		return err
 	}
 
-	b.indexes[dst] = Index{
+	b.indexes[dst] = bucketIndex{
 		Log: dstIdxLog,
 		Mem: srcIdx.Mem.Copy(),
 	}
@@ -684,7 +725,7 @@ func forkOffline(buckDir string, src, dst ForkName) error {
 // 	return os.RemoveAll(src)
 // }
 
-func (b *Bucket) RemoveFork(fork ForkName) error {
+func (b *bucket) RemoveFork(fork ForkName) error {
 	idx, err := b.idxForFork(fork)
 	if err != nil {
 		return err
@@ -705,7 +746,7 @@ func removeForkOffline(buckDir string, fork ForkName) error {
 	return os.Remove(idxPath(buckDir, fork))
 }
 
-func (b *Bucket) Forks() []ForkName {
+func (b *bucket) Forks() []ForkName {
 	// NOTE: Why + 1? Because some functions like Open() will
 	// append the ""-fork as default to the list, so we spare
 	// one allocation if we add one extra.

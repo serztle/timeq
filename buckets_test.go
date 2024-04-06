@@ -1,4 +1,4 @@
-package bucket
+package timeq
 
 import (
 	"fmt"
@@ -15,12 +15,12 @@ func writeDummyBucket(t *testing.T, dir string, key item.Key, items item.Items) 
 	bucketDir := filepath.Join(dir, key.String())
 	require.NoError(t, os.MkdirAll(bucketDir, 0700))
 
-	bucket, err := Open(bucketDir, nil, DefaultOptions())
+	buck, err := openBucket(bucketDir, nil, DefaultOptions())
 	require.NoError(t, err)
 
-	require.NoError(t, bucket.Push(items, true, ""))
-	require.NoError(t, bucket.Sync(true))
-	require.NoError(t, bucket.Close())
+	require.NoError(t, buck.Push(items, true, ""))
+	require.NoError(t, buck.Sync(true))
+	require.NoError(t, buck.Close())
 }
 
 func TestBucketsOpenEmpty(t *testing.T) {
@@ -82,7 +82,7 @@ func TestBucketsIter(t *testing.T) {
 	require.NoError(t, err)
 
 	got := []item.Key{}
-	require.NoError(t, bs.iter(Load, func(key item.Key, b *Bucket) error {
+	require.NoError(t, bs.iter(Load, func(key item.Key, b *bucket) error {
 		got = append(got, b.Key())
 		require.Equal(t, key, b.Key())
 		return nil
