@@ -1027,8 +1027,82 @@ func TestAPIZeroLengthPayload(t *testing.T) {
 	require.Equal(t, exp, got)
 }
 
-// TODO: Better testing for negative prio keys.
-// TODO: Test for bucket deletion on RemoveFork() and bucket deletion when all forks empty.
-// TODO: Remove Move/Peek and make function return a boolean to indicate what to to with the
-//       peeked data (remove or keep)
-// TODO: Try to get rid of some of the type alias stuff, as it's rather annoying in go docs.
+func assertBucketExistence(t *testing.T, queue *Queue, expectExist bool) {
+	buckDir := queue.buckets.buckPath(0)
+	if _, err := os.Stat(buckDir); err != nil {
+		if expectExist {
+			require.Fail(t, "bucket should exist, but does not")
+		}
+	} else {
+		if !expectExist {
+			require.Fail(t, "bucket should not exist, but does")
+		}
+	}
+}
+
+func TestAPIForkBucketDeleteWhenEmpty(t *testing.T) {
+	dir, err := os.MkdirTemp("", "timeq-apitest")
+	require.NoError(t, err)
+	defer os.RemoveAll(dir)
+
+	const N = 10
+	exp := testutils.GenItems(0, N, 1)
+
+	queue, err := Open(dir, DefaultOptions())
+	require.NoError(t, err)
+
+	f1, err := queue.Fork("hänsel")
+	require.NoError(t, err)
+
+	f2, err := queue.Fork("gretel")
+	require.NoError(t, err)
+	assertBucketExistence(t, queue, false)
+
+	require.NoError(t, queue.Push(exp))
+	assertBucketExistence(t, queue, true)
+
+	_, err = PopCopy(f1, N)
+	require.NoError(t, err)
+	assertBucketExistence(t, queue, true)
+
+	_, err = PopCopy(f2, N)
+	require.NoError(t, err)
+	assertBucketExistence(t, queue, true)
+
+	_, err = PopCopy(queue, N)
+	require.NoError(t, err)
+
+	assertBucketExistence(t, queue, false)
+}
+
+func TestAPIForkBucketDeleteOnRemoveFork(t *testing.T) {
+	dir, err := os.MkdirTemp("", "timeq-apitest")
+	require.NoError(t, err)
+	defer os.RemoveAll(dir)
+
+	const N = 10
+	exp := testutils.GenItems(0, N, 1)
+
+	queue, err := Open(dir, DefaultOptions())
+	require.NoError(t, err)
+
+	f1, err := queue.Fork("hänsel")
+	require.NoError(t, err)
+
+	f2, err := queue.Fork("gretel")
+	require.NoError(t, err)
+	assertBucketExistence(t, queue, false)
+
+	require.NoError(t, queue.Push(exp))
+	assertBucketExistence(t, queue, true)
+
+	_, err = PopCopy(queue, N)
+	require.NoError(t, err)
+	assertBucketExistence(t, queue, true)
+
+	require.NoError(t, f1.Remove())
+	assertBucketExistence(t, queue, true)
+
+	require.NoError(t, f2.Remove())
+	assertBucketExistence(t, queue, false)
+}

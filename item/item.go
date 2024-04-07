@@ -75,6 +75,7 @@ func (l Location) String() string {
 	return fmt.Sprintf("[key=%s, off=%d, len=%d]", l.Key, l.Off, l.Len)
 }
 
+// Items is a list of items.
 type Items []Item
 
 func (items Items) Copy() Items {

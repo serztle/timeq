@@ -342,9 +342,7 @@ func (bs *buckets) Shovel(dstBs *buckets, fork ForkName) (int, error) {
 				return err
 			}
 
-			// TODO: write tests for this.
 			return moveFileOrDir(srcPath, dstPath)
-			//return moveBucketOffline(srcPath, dstPath, fork)
 		}
 
 		// In this case we have to copy the items more intelligently,
@@ -522,7 +520,6 @@ func (bs *buckets) Push(items item.Items) error {
 
 			bs.opts.Logger.Printf("failed to push: %v", err)
 		} else {
-			// TODO: Pass fork here?
 			if err := buck.Push(items[:nextIdx], true, ""); err != nil {
 				if bs.opts.ErrorMode == ErrorModeAbort {
 					return fmt.Errorf("bucket: push: %w", err)

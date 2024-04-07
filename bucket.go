@@ -272,6 +272,8 @@ func recoverMmapError(dstErr *error) {
 }
 
 // Push expects pre-sorted items!
+// If `all` is set, all forks receive the new items.
+// If `all` is false, then only the fork with `name` gets the new items.
 func (b *bucket) Push(items item.Items, all bool, name ForkName) (outErr error) {
 	if len(items) == 0 {
 		return nil
@@ -655,30 +657,6 @@ func forkOffline(buckDir string, src, dst ForkName) error {
 	opts := copy.Options{Sync: true}
 	return copy.Copy(srcPath, dstPath, opts)
 }
-
-// TODO: Is that still needed?
-// // moveBucketOffline copies and removes the bucket at `src` to `dst` (assuming
-// // it does not exist yet) and copies only the fork named `name` while doing so.
-// func moveBucketOffline(src, dst string, name ForkName) error {
-// 	srcIdxPath := idxPath(src, name)
-// 	dstIdxPath := idxPath(src, name)
-// 	srcDataLog := filepath.Join(src, "dat.log")
-// 	dstDataLog := filepath.Join(src, "dat.log")
-//
-// 	if err := os.MkdirAll(dst, 0700); err != nil {
-// 		return err
-// 	}
-//
-// 	// Move the relevant files:
-// 	if err := errors.Join(
-// 		moveFileOrDir(srcDataLog, dstDataLog),
-// 		moveFileOrDir(srcIdxPath, dstIdxPath),
-// 	); err != nil {
-// 		return err
-// 	}
-//
-// 	return os.RemoveAll(src)
-// }
 
 func (b *bucket) RemoveFork(fork ForkName) error {
 	idx, err := b.idxForFork(fork)

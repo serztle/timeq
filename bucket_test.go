@@ -224,14 +224,6 @@ func TestBucketLen(t *testing.T) {
 	})
 }
 
-// TODO:
-//   - Test for deleting something in the middle of a loc.
-//   - Delete of multiple, overlapping locs.
-//   - Buckets test:
-//   - Delete all (int_min, int_max)
-//   - Delete first one only.
-//   - Delete last only.
-//   - One-off around a bucket
 func TestBucketDelete(t *testing.T) {
 	withEmptyBucket(t, func(buck *bucket) {
 		require.Equal(t, 0, buck.Len(""))

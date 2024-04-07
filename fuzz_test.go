@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TODO:
 // Fuzz ideas:
 // - different pop sizes.
 // - different number of re-opens in the middle.
