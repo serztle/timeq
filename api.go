@@ -30,7 +30,7 @@ func Open(dir string, opts Options) (*Queue, error) {
 		return nil, err
 	}
 
-	bs, err := LoadAll(dir, opts)
+	bs, err := loadAllBuckets(dir, opts)
 	if err != nil {
 		return nil, fmt.Errorf("buckets: %w", err)
 	}

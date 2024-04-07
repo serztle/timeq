@@ -19,19 +19,29 @@ const (
 	dataLogName = "dat.log"
 )
 
-// ReadOp define the kind of operation done by the Read() function.
+// ReadOp defines what timeq should do with the data that was read.
 type ReadOp int
 
 const (
+	// ReadOpPeek preserves the read data. It will be available on the next call to Read().
 	ReadOpPeek = 0
-	ReadOpPop  = 1
-	ReadOpMove = 2
+
+	// ReadOpPop removes the read data. It will not be available on the next call to Read().
+	ReadOpPop = 1
 )
 
+// ReadOpFn is the function passed to the Read() call.
+// It will be called zero to multiple times with a number of items
+// that was read. You can decide with the return value what to do with this data.
+// Returning an error will immediately stop further reading. The current data will
+// not be touched and the error is bubbled up.
 type ReadOpFn func(items Items) (ReadOp, error)
 
+// ForkName is the name of a specific fork.
 type ForkName string
 
+// Validate checks if this for has a valid name.
+// A fork is valid if its name only consists of alphanumeric and/or dash or underscore characters.
 func (name ForkName) Validate() error {
 	if name == "" {
 		return errors.New("empty string not allowed as fork name")

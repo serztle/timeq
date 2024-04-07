@@ -33,7 +33,7 @@ type buckets struct {
 	readBuf  Items
 }
 
-func LoadAll(dir string, opts Options) (*buckets, error) {
+func loadAllBuckets(dir string, opts Options) (*buckets, error) {
 	if err := os.MkdirAll(dir, 0700); err != nil {
 		return nil, fmt.Errorf("mkdir: %w", err)
 	}
@@ -181,14 +181,14 @@ func (bs *buckets) delete(key item.Key) error {
 type iterMode int
 
 const (
-	// IncludeNil goes over all buckets, including those that are nil (not loaded.)
-	IncludeNil = iterMode(iota)
+	// includeNil goes over all buckets, including those that are nil (not loaded.)
+	includeNil = iterMode(iota)
 
-	// LoadedOnly iterates over all buckets that were loaded already.
-	LoadedOnly
+	// loadedOnly iterates over all buckets that were loaded already.
+	loadedOnly
 
-	// Load loads all buckets, including those that were not loaded yet.
-	Load
+	// load loads all buckets, including those that were not loaded yet.
+	load
 )
 
 // errIterStop can be returned in Iter's func when you want to stop
@@ -218,11 +218,11 @@ func (bs *buckets) iter(mode iterMode, fn func(key item.Key, b *bucket) error) e
 		}
 
 		if buck == nil {
-			if mode == LoadedOnly {
+			if mode == loadedOnly {
 				continue
 			}
 
-			if mode == Load {
+			if mode == load {
 				// load the bucket fresh from disk.
 				// NOTE: This might unload other buckets!
 				var err error
@@ -250,7 +250,7 @@ func (bs *buckets) Sync() error {
 	bs.mu.Lock()
 	defer bs.mu.Unlock()
 
-	_ = bs.iter(LoadedOnly, func(_ item.Key, b *bucket) error {
+	_ = bs.iter(loadedOnly, func(_ item.Key, b *bucket) error {
 		// try to sync as much as possible:
 		err = errors.Join(err, b.Sync(true))
 		return nil
@@ -281,7 +281,7 @@ func (bs *buckets) Close() error {
 	bs.mu.Lock()
 	defer bs.mu.Unlock()
 
-	return bs.iter(LoadedOnly, func(_ item.Key, b *bucket) error {
+	return bs.iter(loadedOnly, func(_ item.Key, b *bucket) error {
 		return b.Close()
 	})
 }
@@ -291,7 +291,7 @@ func (bs *buckets) Len(fork ForkName) int {
 	bs.mu.Lock()
 	defer bs.mu.Unlock()
 
-	_ = bs.iter(IncludeNil, func(key item.Key, b *bucket) error {
+	_ = bs.iter(includeNil, func(key item.Key, b *bucket) error {
 		if b == nil {
 			trailer, ok := bs.trailers[trailerKey{
 				Key:  key,
@@ -322,7 +322,7 @@ func (bs *buckets) Shovel(dstBs *buckets, fork ForkName) (int, error) {
 	defer dstBs.mu.Unlock()
 
 	var ntotalcopied int
-	err := bs.iter(IncludeNil, func(key item.Key, _ *bucket) error {
+	err := bs.iter(includeNil, func(key item.Key, _ *bucket) error {
 		if _, ok := dstBs.tree.Get(key); !ok {
 			// fast path: We can just move the bucket directory.
 			dstPath := dstBs.buckPath(key)
@@ -548,7 +548,7 @@ func (bs *buckets) Read(n int, fork ForkName, fn ReadOpFn) error {
 	defer bs.mu.Unlock()
 
 	var count = n
-	return bs.iter(Load, func(key item.Key, b *bucket) error {
+	return bs.iter(load, func(key item.Key, b *bucket) error {
 		lenBefore := b.Len(fork)
 		if err := b.Read(count, &bs.readBuf, fork, fn); err != nil {
 			if bs.opts.ErrorMode == ErrorModeAbort {
@@ -660,7 +660,7 @@ func (bs *buckets) Fork(src, dst ForkName) error {
 		return nil
 	}
 
-	err := bs.iter(IncludeNil, func(key item.Key, buck *bucket) error {
+	err := bs.iter(includeNil, func(key item.Key, buck *bucket) error {
 		if buck != nil {
 			return buck.Fork(src, dst)
 		}
@@ -690,7 +690,7 @@ func (bs *buckets) RemoveFork(fork ForkName) error {
 		return fork == candidate
 	})
 
-	return bs.iter(IncludeNil, func(key item.Key, buck *bucket) error {
+	return bs.iter(includeNil, func(key item.Key, buck *bucket) error {
 		if buck != nil {
 			if err := buck.RemoveFork(fork); err != nil {
 				return err

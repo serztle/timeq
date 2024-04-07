@@ -32,7 +32,7 @@ func TestBucketsOpenEmpty(t *testing.T) {
 
 	opts := DefaultOptions()
 	opts.MaxParallelOpenBuckets = 1
-	bs, err := LoadAll(dir, opts)
+	bs, err := loadAllBuckets(dir, opts)
 	require.NoError(t, err)
 	require.Equal(t, 0, bs.Len(""))
 	require.NoError(t, bs.Sync())
@@ -48,7 +48,7 @@ func TestBucketsClearEmpty(t *testing.T) {
 
 	opts := DefaultOptions()
 	opts.MaxParallelOpenBuckets = 1
-	bs, err := LoadAll(dir, opts)
+	bs, err := loadAllBuckets(dir, opts)
 	require.NoError(t, err)
 	require.NoError(t, bs.Clear())
 	require.NoError(t, bs.Close())
@@ -73,7 +73,7 @@ func TestBucketsIter(t *testing.T) {
 
 	opts := DefaultOptions()
 	opts.MaxParallelOpenBuckets = 1
-	bs, err := LoadAll(dir, opts)
+	bs, err := loadAllBuckets(dir, opts)
 	require.NoError(t, err)
 
 	// load bucket 80 early to check if iter can handle
@@ -82,7 +82,7 @@ func TestBucketsIter(t *testing.T) {
 	require.NoError(t, err)
 
 	got := []item.Key{}
-	require.NoError(t, bs.iter(Load, func(key item.Key, b *bucket) error {
+	require.NoError(t, bs.iter(load, func(key item.Key, b *bucket) error {
 		got = append(got, b.Key())
 		require.Equal(t, key, b.Key())
 		return nil
@@ -103,7 +103,7 @@ func TestBucketsForKey(t *testing.T) {
 
 	opts := DefaultOptions()
 	opts.MaxParallelOpenBuckets = 1
-	bs, err := LoadAll(dir, opts)
+	bs, err := loadAllBuckets(dir, opts)
 	require.NoError(t, err)
 
 	// open freshly:
@@ -146,7 +146,7 @@ func TestBucketsValidateFunc(t *testing.T) {
 
 	opts := DefaultOptions()
 	opts.MaxParallelOpenBuckets = 1
-	bs, err := LoadAll(dir, opts)
+	bs, err := loadAllBuckets(dir, opts)
 	require.NoError(t, err)
 
 	require.NoError(t, bs.ValidateBucketKeys(func(key item.Key) item.Key {
@@ -175,7 +175,7 @@ func TestBucketsDelete(t *testing.T) {
 
 	opts := DefaultOptions()
 	opts.MaxParallelOpenBuckets = 1
-	bs, err := LoadAll(dir, opts)
+	bs, err := loadAllBuckets(dir, opts)
 	require.NoError(t, err)
 
 	// Delete non-existing yet.
@@ -206,7 +206,7 @@ func TestBucketsNotEmptyDir(t *testing.T) {
 	// but we should not do this automatically.
 	opts := DefaultOptions()
 	opts.MaxParallelOpenBuckets = 1
-	_, err = LoadAll(dir, opts)
+	_, err = loadAllBuckets(dir, opts)
 	require.Error(t, err)
 }
 
@@ -252,7 +252,7 @@ func TestBucketsForkMultipleBuckets(t *testing.T) {
 
 	opts := DefaultOptions()
 	opts.MaxParallelOpenBuckets = 1
-	bs, err := LoadAll(dir, opts)
+	bs, err := loadAllBuckets(dir, opts)
 	require.NoError(t, err)
 
 	require.Empty(t, bs.Forks())
