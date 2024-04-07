@@ -63,8 +63,8 @@ func (q *Queue) Push(items Items) error {
 // appending to a slice) then you can use the Copy() function of Items.
 //
 // You can return either ReadOpPop or ReadOpPeek from `fn`.
-func (q *Queue) Read(n int, dst Items, fn ReadOpFn) error {
-	return q.buckets.Read(n, dst, "", fn)
+func (q *Queue) Read(n int, fn ReadOpFn) error {
+	return q.buckets.Read(n, "", fn)
 }
 
 // Delete deletes all items in the range `from` to `to`.
@@ -137,7 +137,7 @@ func (q *Queue) Close() error {
 // It is less efficient and should not be used if you care for performance.
 func PopCopy(c Consumer, n int) (Items, error) {
 	var items Items
-	return items, c.Read(n, nil, func(popped Items) (ReadOp, error) {
+	return items, c.Read(n, func(popped Items) (ReadOp, error) {
 		items = append(items, popped.Copy()...)
 		return ReadOpPop, nil
 	})
@@ -148,7 +148,7 @@ func PopCopy(c Consumer, n int) (Items, error) {
 // performance.
 func PeekCopy(c Consumer, n int) (Items, error) {
 	var items Items
-	return items, c.Read(n, nil, func(popped Items) (ReadOp, error) {
+	return items, c.Read(n, func(popped Items) (ReadOp, error) {
 		items = append(items, popped.Copy()...)
 		return ReadOpPeek, nil
 	})
@@ -167,7 +167,7 @@ type Fork struct {
 // It covers every consumer related API. Please refer to the respective
 // Queue methods for details.
 type Consumer interface {
-	Read(n int, dst Items, fn ReadOpFn) error
+	Read(n int, fn ReadOpFn) error
 	Delete(from, to Key) (int, error)
 	Shovel(dst *Queue) (int, error)
 	Len() int
@@ -178,12 +178,12 @@ type Consumer interface {
 var _ Consumer = &Queue{}
 
 // Read is like Queue.Read().
-func (f *Fork) Read(n int, dst Items, fn ReadOpFn) error {
+func (f *Fork) Read(n int, fn ReadOpFn) error {
 	if f.q == nil {
 		return ErrNoSuchFork
 	}
 
-	return f.q.buckets.Read(n, dst, f.name, fn)
+	return f.q.buckets.Read(n, f.name, fn)
 }
 
 // Len is like Queue.Len().

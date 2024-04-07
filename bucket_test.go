@@ -28,7 +28,7 @@ func createEmptyBucket(t *testing.T) (*bucket, string) {
 func buckPop(buck *bucket, n int, dst Items, fork ForkName) (Items, int, error) {
 	result := Items{}
 	var popped int
-	return result, popped, buck.Read(n, dst, fork, func(items Items) (ReadOp, error) {
+	return result, popped, buck.Read(n, &dst, fork, func(items Items) (ReadOp, error) {
 		result = append(result, items.Copy()...)
 		popped += len(items)
 		return ReadOpPop, nil
@@ -38,7 +38,7 @@ func buckPop(buck *bucket, n int, dst Items, fork ForkName) (Items, int, error) 
 func buckPeek(buck *bucket, n int, dst Items, fork ForkName) (Items, int, error) {
 	result := Items{}
 	var peeked int
-	return result, peeked, buck.Read(n, dst, fork, func(items Items) (ReadOp, error) {
+	return result, peeked, buck.Read(n, &dst, fork, func(items Items) (ReadOp, error) {
 		result = append(result, items.Copy()...)
 		peeked += len(items)
 		return ReadOpPeek, nil
@@ -48,7 +48,7 @@ func buckPeek(buck *bucket, n int, dst Items, fork ForkName) (Items, int, error)
 func buckMove(buck, dstBuck *bucket, n int, dst Items, fork ForkName) (Items, int, error) {
 	result := Items{}
 	var moved int
-	return result, moved, buck.Read(n, dst, fork, func(items Items) (ReadOp, error) {
+	return result, moved, buck.Read(n, &dst, fork, func(items Items) (ReadOp, error) {
 		result = append(result, items.Copy()...)
 		moved += len(items)
 		return ReadOpPop, dstBuck.Push(items, true, fork)

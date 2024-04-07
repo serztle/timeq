@@ -90,11 +90,7 @@ func recoverIndexFromLog(opts *Options, log *vlog.Log, idxPath string) (*index.I
 	}
 
 	if mem.Len() > 0 {
-		if memErr == nil {
-			opts.Logger.Printf("index is empty, but log is not (%s)", idxPath)
-		} else {
-			opts.Logger.Printf("failed to load index %s: %v", idxPath, memErr)
-		}
+		opts.Logger.Printf("index is empty, but log is not (%s)", idxPath)
 	}
 
 	if err := os.Remove(idxPath); err != nil {
@@ -319,7 +315,7 @@ func (b *bucket) addIter(batchIters *vlog.Iters, idxIter *index.Iter) (bool, err
 	return !idxIter.Next(), nil
 }
 
-func (b *bucket) Read(n int, dst item.Items, fork ForkName, fn ReadOpFn) error {
+func (b *bucket) Read(n int, dst *item.Items, fork ForkName, fn ReadOpFn) error {
 	if n <= 0 {
 		// return nothing.
 		return nil
@@ -330,9 +326,21 @@ func (b *bucket) Read(n int, dst item.Items, fork ForkName, fn ReadOpFn) error {
 		return err
 	}
 
-	iters, items, _, err := b.peek(n, dst, idx.Mem)
+	if dst == nil {
+		// just for safety:
+		v := Items{}
+		dst = &v
+	}
+
+	iters, items, _, err := b.peek(n, (*dst)[:0], idx.Mem)
 	if err != nil {
 		return err
+	}
+
+	if cap(*dst) < cap(items) {
+		// if we appened beyond what we pre-allocated,
+		// then use the newly pre-allocated slice.
+		*dst = items
 	}
 
 	op, err := fn(items)
@@ -353,69 +361,6 @@ func (b *bucket) Read(n int, dst item.Items, fork ForkName, fn ReadOpFn) error {
 
 	return nil
 }
-
-// func (b *Bucket) Pop(n int, dst item.Items, fork ForkName) (item.Items, int, error) {
-// 	idx, err := b.idxForFork(fork)
-// 	if err != nil {
-// 		return dst, 0, err
-// 	}
-//
-// 	iters, items, npopped, err := b.peek(n, dst, idx.Mem)
-// 	if err != nil {
-// 		return items, npopped, err
-// 	}
-//
-// 	if iters != nil {
-// 		if err := b.popSync(idx, iters); err != nil {
-// 			return items, npopped, err
-// 		}
-// 	}
-//
-// 	return items, npopped, nil
-// }
-//
-// func (b *Bucket) Peek(n int, dst item.Items, fork ForkName) (item.Items, int, error) {
-// 	if n <= 0 {
-// 		return dst, 0, nil
-// 	}
-//
-// 	idx, err := b.idxForFork(fork)
-// 	if err != nil {
-// 		return dst, 0, err
-// 	}
-//
-// 	_, items, npopped, err := b.peek(n, dst, idx.Mem)
-// 	return items, npopped, err
-// }
-//
-// // Move moves data between two buckets in a safer way. In case of
-// // crashes the data might be present in the destination queue, but is
-// // not yet deleted from the source queue. Callers should be ready to
-// // handle duplicates.
-// func (b *Bucket) Move(n int, dst item.Items, dstBuck *Bucket, fork ForkName) (item.Items, int, error) {
-// 	if n <= 0 {
-// 		// technically that's a valid use case.
-// 		return dst, 0, nil
-// 	}
-//
-// 	idx, err := b.idxForFork(fork)
-// 	if err != nil {
-// 		return nil, 0, err
-// 	}
-//
-// 	iters, items, npopped, err := b.peek(n, dst, idx.Mem)
-// 	if err != nil {
-// 		return items, npopped, err
-// 	}
-//
-// 	if dstBuck != nil {
-// 		if err := dstBuck.Push(items[len(dst):], false, fork); err != nil {
-// 			return items, npopped, err
-// 		}
-// 	}
-//
-// 	return items, npopped, b.popSync(idx, iters)
-// }
 
 // peek reads from the bucket, but does not mark the elements as deleted yet.
 func (b *bucket) peek(n int, dst item.Items, idx *index.Index) (batchIters *vlog.Iters, outItems item.Items, npopped int, outErr error) {

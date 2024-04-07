@@ -26,7 +26,7 @@ func ExampleQueue() {
 	_ = queue.Push(pushItems)
 
 	// Retrieve the same items again:
-	_ = queue.Read(10, nil, func(popItems Items) (ReadOp, error) {
+	_ = queue.Read(10, func(popItems Items) (ReadOp, error) {
 		// Just for example purposes, check if they match:
 		if reflect.DeepEqual(pushItems, popItems) {
 			fmt.Println("They match! :)")

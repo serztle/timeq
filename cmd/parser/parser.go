@@ -251,7 +251,7 @@ func handlePeek(ctx *cli.Context, q *timeq.Queue) error {
 
 func handlePopOrPeek(ctx *cli.Context, q *timeq.Queue, op timeq.ReadOp) error {
 	n := ctx.Int("number")
-	err := q.Read(n, nil, func(items timeq.Items) (timeq.ReadOp, error) {
+	err := q.Read(n, func(items timeq.Items) (timeq.ReadOp, error) {
 		for _, item := range items {
 			fmt.Println(item)
 		}

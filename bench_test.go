@@ -25,7 +25,6 @@ func benchmarkPushPopWithSyncMode(b *testing.B, benchmarkPush bool, syncMode Syn
 
 	// Add some dummy data:
 	items := make(item.Items, 2000)
-	dstItems := make(item.Items, 0, 2000)
 	timeoff := 0
 
 	b.ResetTimer()
@@ -55,12 +54,14 @@ func benchmarkPushPopWithSyncMode(b *testing.B, benchmarkPush bool, syncMode Syn
 		if !benchmarkPush {
 			b.StartTimer()
 		}
-		dstItems = dstItems[:0]
 
 		// The "-1" is to avoid deleting the bucket over and over.
 		// We want to benchmark the actual pop and not the deletion
 		// on empty buckets (to make it comparable to previous bench numbers).
-		err = queue.Read(len(items)-1, dstItems[:0], nil)
+		err = queue.Read(len(items)-1, func(items Items) (ReadOp, error) {
+			return ReadOpPop, nil
+		})
+
 		if !benchmarkPush {
 			b.StopTimer()
 		}

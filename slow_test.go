@@ -57,9 +57,8 @@ func TestAPI4GLog(t *testing.T) {
 	}
 
 	var got int
-	var dst = make(Items, 0, N)
 	for queue.Len() > 0 {
-		require.NoError(t, queue.Read(N, dst, func(items Items) (ReadOp, error) {
+		require.NoError(t, queue.Read(N, func(items Items) (ReadOp, error) {
 			got += len(items)
 			return ReadOpPop, nil
 		}))

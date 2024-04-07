@@ -30,6 +30,7 @@ type buckets struct {
 	trailers map[trailerKey]index.Trailer
 	opts     Options
 	forks    []ForkName
+	readBuf  Items
 }
 
 func LoadAll(dir string, opts Options) (*buckets, error) {
@@ -87,6 +88,7 @@ func LoadAll(dir string, opts Options) (*buckets, error) {
 		tree:     tree,
 		opts:     opts,
 		trailers: trailers,
+		readBuf:  make(Items, 2000),
 	}
 
 	forks, err := bs.fetchForks()
@@ -189,13 +191,13 @@ const (
 	Load
 )
 
-// IterStop can be returned in Iter's func when you want to stop
+// errIterStop can be returned in Iter's func when you want to stop
 // It does not count as error.
-var IterStop = errors.New("iteration stopped")
+var errIterStop = errors.New("iteration stopped")
 
 // Iter iterates over all buckets, starting with the lowest. The buckets include
 // unloaded depending on `mode`. The error you return in `fn` will be returned
-// by Iter() and iteration immediately stops. If you return IterStop then
+// by Iter() and iteration immediately stops. If you return errIterStop then
 // Iter() will return nil and will also stop the iteration. Note that Iter() honors the
 // MaxParallelOpenBuckets option, i.e. when the mode is `Load` it will immediately close
 // old buckets again before proceeding.
@@ -232,7 +234,7 @@ func (bs *buckets) iter(mode iterMode, fn func(key item.Key, b *bucket) error) e
 		}
 
 		if err := fn(key, buck); err != nil {
-			if err == IterStop {
+			if err == errIterStop {
 				err = nil
 			}
 
@@ -319,8 +321,6 @@ func (bs *buckets) Shovel(dstBs *buckets, fork ForkName) (int, error) {
 	dstBs.mu.Lock()
 	defer dstBs.mu.Unlock()
 
-	buf := make(item.Items, 0, 2000)
-
 	var ntotalcopied int
 	err := bs.iter(IncludeNil, func(key item.Key, _ *bucket) error {
 		if _, ok := dstBs.tree.Get(key); !ok {
@@ -361,7 +361,7 @@ func (bs *buckets) Shovel(dstBs *buckets, fork ForkName) (int, error) {
 			return err
 		}
 
-		return srcBuck.Read(math.MaxInt, buf[:0], fork, func(items item.Items) (ReadOp, error) {
+		return srcBuck.Read(math.MaxInt, &bs.readBuf, fork, func(items item.Items) (ReadOp, error) {
 			if err := dstBuck.Push(items, true, fork); err != nil {
 				return ReadOpPeek, err
 			}
@@ -538,9 +538,7 @@ func (bs *buckets) Push(items item.Items) error {
 	return nil
 }
 
-// TODO: Could Peek() cause an endless loop here since it does not pop anything?
-// Read handles all kind of reading operations. It is a low-level function that is not part of the official API.
-func (bs *buckets) Read(n int, dst item.Items, fork ForkName, fn ReadOpFn) error {
+func (bs *buckets) Read(n int, fork ForkName, fn ReadOpFn) error {
 	if n < 0 {
 		// use max value to select all.
 		n = int(^uint(0) >> 1)
@@ -552,7 +550,7 @@ func (bs *buckets) Read(n int, dst item.Items, fork ForkName, fn ReadOpFn) error
 	var count = n
 	return bs.iter(Load, func(key item.Key, b *bucket) error {
 		lenBefore := b.Len(fork)
-		if err := b.Read(count, dst, fork, fn); err != nil {
+		if err := b.Read(count, &bs.readBuf, fork, fn); err != nil {
 			if bs.opts.ErrorMode == ErrorModeAbort {
 				return err
 			}
@@ -572,7 +570,7 @@ func (bs *buckets) Read(n int, dst item.Items, fork ForkName, fn ReadOpFn) error
 
 		count -= (lenBefore - lenAfter)
 		if count <= 0 {
-			return IterStop
+			return errIterStop
 		}
 
 		return nil

@@ -42,7 +42,7 @@ func TestAPIPushPopEmpty(t *testing.T) {
 	require.NoError(t, queue.Close())
 
 	require.NoError(t, queue.Push(nil))
-	err = queue.Read(100, nil, func(items Items) (ReadOp, error) {
+	err = queue.Read(100, func(items Items) (ReadOp, error) {
 		return ReadOpPop, errors.New("I was called!")
 	})
 
@@ -83,7 +83,7 @@ func TestAPIPushPopSeveralBuckets(t *testing.T) {
 
 	// Read them in one go:
 	got := Items{}
-	require.NoError(t, queue.Read(-1, nil, func(items Items) (ReadOp, error) {
+	require.NoError(t, queue.Read(-1, func(items Items) (ReadOp, error) {
 		got = append(got, items.Copy()...)
 		return ReadOpPop, nil
 	}))
@@ -100,7 +100,7 @@ func TestAPIPushPopSeveralBuckets(t *testing.T) {
 	reopened, err := Open(dir, opts)
 	require.NoError(t, err)
 	require.Equal(t, 0, reopened.Len())
-	require.NoError(t, reopened.Read(-1, nil, func(items Items) (ReadOp, error) {
+	require.NoError(t, reopened.Read(-1, func(items Items) (ReadOp, error) {
 		require.Empty(t, items)
 		return ReadOpPop, nil
 	}))
@@ -134,7 +134,7 @@ func TestAPIShovelFastPath(t *testing.T) {
 	require.Equal(t, 0, q1.Len())
 	require.Equal(t, len(exp), q2.Len())
 
-	require.NoError(t, q2.Read(len(exp), nil, func(got Items) (ReadOp, error) {
+	require.NoError(t, q2.Read(len(exp), func(got Items) (ReadOp, error) {
 		require.Equal(t, exp, got)
 		return ReadOpPop, nil
 	}))
@@ -198,7 +198,7 @@ func testAPIShovelSlowPath(t *testing.T, reopen bool) {
 	}
 
 	exp := append(q1Push, q2Push...)
-	require.NoError(t, q2.Read(len(q1Push)+len(q2Push), nil, func(got Items) (ReadOp, error) {
+	require.NoError(t, q2.Read(len(q1Push)+len(q2Push), func(got Items) (ReadOp, error) {
 		require.Equal(t, exp, got)
 		return ReadOpPop, nil
 	}))
@@ -279,7 +279,7 @@ func TestAPIPeek(t *testing.T) {
 
 	// Check that Peek() really did not delete anything:
 	got = got[:0]
-	require.NoError(t, queue.Read(len(exp), nil, func(items Items) (ReadOp, error) {
+	require.NoError(t, queue.Read(len(exp), func(items Items) (ReadOp, error) {
 		got = append(got, items.Copy()...)
 		return ReadOpPop, nil
 	}))
@@ -335,7 +335,7 @@ func TestAPIMove(t *testing.T) {
 	require.Equal(t, 0, dstQueue.Len())
 
 	var got Items
-	require.NoError(t, srcQueue.Read(len(exp), nil, func(items Items) (ReadOp, error) {
+	require.NoError(t, srcQueue.Read(len(exp), func(items Items) (ReadOp, error) {
 		got = append(got, items.Copy()...)
 		return ReadOpPop, dstQueue.Push(items)
 	}))
@@ -348,7 +348,7 @@ func TestAPIMove(t *testing.T) {
 	require.Equal(t, len(exp), dstQueue.Len())
 
 	gotMoved := Items{}
-	require.NoError(t, dstQueue.Read(len(exp), nil, func(items Items) (ReadOp, error) {
+	require.NoError(t, dstQueue.Read(len(exp), func(items Items) (ReadOp, error) {
 		gotMoved = append(gotMoved, items.Copy()...)
 		return ReadOpPop, nil
 	}))
@@ -454,7 +454,7 @@ func testAPIErrorModePop(t *testing.T, mode ErrorMode) {
 		os.Truncate(filepath.Join(dir, Key(0).String(), dataLogName), 0),
 	)
 
-	popErr := queue.Read(100, nil, func(items Items) (ReadOp, error) {
+	popErr := queue.Read(100, func(items Items) (ReadOp, error) {
 		if mode == ErrorModeContinue {
 			require.NotEmpty(t, logger.String())
 			require.NotEmpty(t, items)
@@ -721,9 +721,8 @@ func testAPIDoNotCrashOnMultiBucketPop(t *testing.T, maxParallelOpenBuckets int)
 	refFds := openfds(t)
 	refRss := rssBytes(t)
 
-	dst := make([]Item, 0, N*10)
 	count := 0
-	require.NoError(t, queue.Read(N*N, dst, func(items Items) (ReadOp, error) {
+	require.NoError(t, queue.Read(N*N, func(items Items) (ReadOp, error) {
 		for _, item := range items {
 			num, err := strconv.Atoi(string(item.Blob))
 			require.NoError(t, err)
@@ -816,7 +815,7 @@ func TestAPIZeroLengthPush(t *testing.T) {
 	require.NoError(t, err)
 
 	require.NoError(t, queue.Push(Items{}))
-	require.NoError(t, queue.Read(1, nil, func(_ Items) (ReadOp, error) {
+	require.NoError(t, queue.Read(1, func(_ Items) (ReadOp, error) {
 		require.Fail(t, "should not have been executed")
 		return ReadOpPop, nil
 	}))
@@ -828,7 +827,7 @@ func TestAPIZeroLengthPush(t *testing.T) {
 	require.NoError(t, queue.Push(append(emptyItems, nonEmptyItems...)))
 
 	var executed bool
-	require.NoError(t, queue.Read(2, nil, func(items Items) (ReadOp, error) {
+	require.NoError(t, queue.Read(2, func(items Items) (ReadOp, error) {
 		require.Equal(t, emptyItems[0], items[0])
 		require.Equal(t, nonEmptyItems[0], items[1])
 		executed = true
@@ -852,7 +851,7 @@ func TestAPIZeroKeyPush(t *testing.T) {
 	require.Equal(t, 1, queue.Len())
 
 	var executed bool
-	require.NoError(t, queue.Read(1, nil, func(items Items) (ReadOp, error) {
+	require.NoError(t, queue.Read(1, func(items Items) (ReadOp, error) {
 		require.Equal(t, zeroKey, items)
 		executed = true
 		return ReadOpPop, nil
@@ -990,7 +989,7 @@ func TestAPINegativKeys(t *testing.T) {
 	require.NoError(t, queue.Push(testutils.GenItems(-100, +100, 1)))
 
 	for idx := 0; idx < 40; idx++ {
-		require.NoError(t, queue.Read(10, nil, func(items Items) (ReadOp, error) {
+		require.NoError(t, queue.Read(10, func(items Items) (ReadOp, error) {
 			for itemIdx, item := range items {
 				a := (idx*10 + itemIdx - 200)
 				if a <= 0 {
