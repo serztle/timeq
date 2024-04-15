@@ -88,7 +88,7 @@ func move(t *testing.T, waiting, unacked *Queue) {
 
 	queueLenBefore := waiting.Len()
 	const popSize = 2000
-	require.NoError(t, waiting.Read(popSize, func(items Items) (ReadOp, error) {
+	require.NoError(t, waiting.Read(popSize, func(_ Transaction, items Items) (ReadOp, error) {
 		count += len(items)
 
 		for idx, item := range items {
@@ -122,13 +122,13 @@ func ack(t *testing.T, rng *rand.Rand, waiting, unacked *Queue) {
 	deleteOff := Key(rng.Int63n(int64(time.Minute)) - int64(15*time.Second))
 
 	var waitingOff Key
-	require.NoError(t, waiting.Read(1, func(items Items) (ReadOp, error) {
+	require.NoError(t, waiting.Read(1, func(_ Transaction, items Items) (ReadOp, error) {
 		waitingOff = items[0].Key
 		return ReadOpPeek, nil
 	}))
 
 	var unackedOff Key
-	require.NoError(t, unacked.Read(1, func(items Items) (ReadOp, error) {
+	require.NoError(t, unacked.Read(1, func(_ Transaction, items Items) (ReadOp, error) {
 		unackedOff = items[0].Key
 		return ReadOpPeek, nil
 	}))

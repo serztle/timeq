@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"runtime/debug"
 	"slices"
-	"unicode"
 
 	"github.com/otiai10/copy"
 	"github.com/sahib/timeq/index"
@@ -30,32 +29,7 @@ const (
 	ReadOpPop = 1
 )
 
-// ReadOpFn is the function passed to the Read() call.
-// It will be called zero to multiple times with a number of items
-// that was read. You can decide with the return value what to do with this data.
-// Returning an error will immediately stop further reading. The current data will
-// not be touched and the error is bubbled up.
-type ReadOpFn func(items Items) (ReadOp, error)
-
-// ForkName is the name of a specific fork.
-type ForkName string
-
-// Validate checks if this for has a valid name.
-// A fork is valid if its name only consists of alphanumeric and/or dash or underscore characters.
-func (name ForkName) Validate() error {
-	if name == "" {
-		return errors.New("empty string not allowed as fork name")
-	}
-
-	for pos, rn := range []rune(name) {
-		ok := unicode.IsUpper(rn) || unicode.IsLower(rn) || unicode.IsDigit(rn) || rn == '-' || rn == '_'
-		if !ok {
-			return fmt.Errorf("invalid fork name at pos %d: %v (allowed: [a-Z0-9_-])", pos, rn)
-		}
-	}
-
-	return nil
-}
+type bucketReadOpFn func(items Items) (ReadOp, error)
 
 type bucketIndex struct {
 	Log *index.Writer
@@ -327,7 +301,7 @@ func (b *bucket) addIter(batchIters *vlog.Iters, idxIter *index.Iter) (bool, err
 	return !idxIter.Next(), nil
 }
 
-func (b *bucket) Read(n int, dst *item.Items, fork ForkName, fn ReadOpFn) error {
+func (b *bucket) Read(n int, dst *item.Items, fork ForkName, fn bucketReadOpFn) error {
 	if n <= 0 {
 		// return nothing.
 		return nil

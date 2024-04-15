@@ -2,8 +2,9 @@
 package timeq
 
 import (
+	"errors"
 	"fmt"
-	"sync"
+	"unicode"
 
 	"github.com/sahib/timeq/item"
 )
@@ -20,9 +21,44 @@ type Key = item.Key
 
 // Queue is the high level API to the priority queue.
 type Queue struct {
-	mu      sync.Mutex
 	buckets *buckets
 }
+
+// ForkName is the name of a specific fork.
+type ForkName string
+
+// Validate checks if this for has a valid name.
+// A fork is valid if its name only consists of alphanumeric and/or dash or underscore characters.
+func (name ForkName) Validate() error {
+	if name == "" {
+		return errors.New("empty string not allowed as fork name")
+	}
+
+	for pos, rn := range []rune(name) {
+		ok := unicode.IsUpper(rn) || unicode.IsLower(rn) || unicode.IsDigit(rn) || rn == '-' || rn == '_'
+		if !ok {
+			return fmt.Errorf("invalid fork name at pos %d: %v (allowed: [a-Z0-9_-])", pos, rn)
+		}
+	}
+
+	return nil
+}
+
+// Transaction is a handle to the queue during the read callback.
+// See TransactionFn for more details.
+type Transaction interface {
+	Push(items Items) error
+}
+
+// TransactionFn is the function passed to the Read() call.
+// It will be called zero to multiple times with a number of items
+// that was read. You can decide with the return value what to do with this data.
+// Returning an error will immediately stop further reading. The current data will
+// not be touched and the error is bubbled up.
+//
+// The `tx` parameter can be used to push data back to the queue. It might be
+// extended in future releases.
+type TransactionFn func(tx Transaction, items Items) (ReadOp, error)
 
 // Open tries to open the priority queue structure in `dir`.
 // If `dir` does not exist, then a new, empty priority queue is created.
@@ -47,7 +83,7 @@ func Open(dir string, opts Options) (*Queue, error) {
 // Push pushes a batch of `items` to the queue.
 // It is allowed to call this function during the read callback.
 func (q *Queue) Push(items Items) error {
-	return q.buckets.Push(items)
+	return q.buckets.Push(items, true)
 }
 
 // Read fetches up to `n` items from the queue. It will call the supplied `fn`
@@ -69,7 +105,7 @@ func (q *Queue) Push(items Items) error {
 //
 // You may only call Push() inside the read transaction.
 // All other operations will DEADLOCK if called!
-func (q *Queue) Read(n int, fn ReadOpFn) error {
+func (q *Queue) Read(n int, fn TransactionFn) error {
 	return q.buckets.Read(n, "", fn)
 }
 
@@ -143,7 +179,7 @@ func (q *Queue) Close() error {
 // It is less efficient and should not be used if you care for performance.
 func PopCopy(c Consumer, n int) (Items, error) {
 	var items Items
-	return items, c.Read(n, func(popped Items) (ReadOp, error) {
+	return items, c.Read(n, func(_ Transaction, popped Items) (ReadOp, error) {
 		items = append(items, popped.Copy()...)
 		return ReadOpPop, nil
 	})
@@ -154,7 +190,7 @@ func PopCopy(c Consumer, n int) (Items, error) {
 // performance.
 func PeekCopy(c Consumer, n int) (Items, error) {
 	var items Items
-	return items, c.Read(n, func(popped Items) (ReadOp, error) {
+	return items, c.Read(n, func(_ Transaction, popped Items) (ReadOp, error) {
 		items = append(items, popped.Copy()...)
 		return ReadOpPeek, nil
 	})
@@ -173,21 +209,18 @@ type Fork struct {
 // It covers every consumer related API. Please refer to the respective
 // Queue methods for details.
 type Consumer interface {
-	Read(n int, fn ReadOpFn) error
+	Read(n int, fn TransactionFn) error
 	Delete(from, to Key) (int, error)
 	Shovel(dst *Queue) (int, error)
 	Len() int
 	Fork(name ForkName) (*Fork, error)
 }
 
-type Transaction interface {
-}
-
 // Check that Queue also implements the Consumer interface.
 var _ Consumer = &Queue{}
 
 // Read is like Queue.Read().
-func (f *Fork) Read(n int, fn ReadOpFn) error {
+func (f *Fork) Read(n int, fn TransactionFn) error {
 	if f.q == nil {
 		return ErrNoSuchFork
 	}

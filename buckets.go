@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 	"slices"
 	"sync"
-	"sync/atomic"
 
 	"github.com/sahib/timeq/index"
 	"github.com/sahib/timeq/item"
@@ -24,15 +23,23 @@ type trailerKey struct {
 	fork ForkName
 }
 
+// small wrapper around buckets that calls Push() without locking.
+type tx struct {
+	bs *buckets
+}
+
+func (tx *tx) Push(items item.Items) error {
+	return tx.bs.Push(items, false)
+}
+
 type buckets struct {
-	mu              sync.Mutex
-	isInTransaction int32 // indicates if we're currently in the ReadFn callback.
-	dir             string
-	tree            btree.Map[item.Key, *bucket]
-	trailers        map[trailerKey]index.Trailer
-	opts            Options
-	forks           []ForkName
-	readBuf         Items
+	mu       sync.Mutex
+	dir      string
+	tree     btree.Map[item.Key, *bucket]
+	trailers map[trailerKey]index.Trailer
+	opts     Options
+	forks    []ForkName
+	readBuf  Items
 }
 
 func loadAllBuckets(dir string, opts Options) (*buckets, error) {
@@ -497,7 +504,7 @@ func binsplit(items item.Items, comp item.Key, fn func(item.Key) item.Key) int {
 	return pivotIdx + binsplit(items[pivotIdx:], comp, fn)
 }
 
-func (bs *buckets) Push(items item.Items) error {
+func (bs *buckets) Push(items item.Items, locked bool) error {
 	if len(items) == 0 {
 		return nil
 	}
@@ -506,10 +513,7 @@ func (bs *buckets) Push(items item.Items) error {
 		return int(i.Key - j.Key)
 	})
 
-	if atomic.LoadInt32(&bs.isInTransaction) == 0 {
-		// Only lock if we're not in a transaction currently.
-		// FIXME: This is rather hacky, as it could also allow another go
-		// routine to sneak in at that moment...
+	if locked {
 		bs.mu.Lock()
 		defer bs.mu.Unlock()
 	}
@@ -545,7 +549,7 @@ func (bs *buckets) pushSorted(items item.Items) error {
 	return nil
 }
 
-func (bs *buckets) Read(n int, fork ForkName, fn ReadOpFn) error {
+func (bs *buckets) Read(n int, fork ForkName, fn TransactionFn) error {
 	if n < 0 {
 		// use max value to select all.
 		n = int(^uint(0) >> 1)
@@ -557,10 +561,11 @@ func (bs *buckets) Read(n int, fork ForkName, fn ReadOpFn) error {
 	var count = n
 	return bs.iter(load, func(key item.Key, b *bucket) error {
 		lenBefore := b.Len(fork)
+
+		// wrap the bucket call into something that knows about
+		// transactions - bucket itself does not care about that.
 		wrappedFn := func(items Items) (ReadOp, error) {
-			atomic.StoreInt32(&bs.isInTransaction, 1)
-			defer atomic.StoreInt32(&bs.isInTransaction, 0)
-			return fn(items)
+			return fn(&tx{bs}, items)
 		}
 
 		if err := b.Read(count, &bs.readBuf, fork, wrappedFn); err != nil {

@@ -58,7 +58,7 @@ func benchmarkPushPopWithSyncMode(b *testing.B, benchmarkPush bool, syncMode Syn
 		// The "-1" is to avoid deleting the bucket over and over.
 		// We want to benchmark the actual pop and not the deletion
 		// on empty buckets (to make it comparable to previous bench numbers).
-		err = queue.Read(len(items)-1, func(items Items) (ReadOp, error) {
+		err = queue.Read(len(items)-1, func(_ Transaction, items Items) (ReadOp, error) {
 			return ReadOpPop, nil
 		})
 
