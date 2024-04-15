@@ -1106,3 +1106,29 @@ func TestAPIForkBucketDeleteOnRemoveFork(t *testing.T) {
 	require.NoError(t, f2.Remove())
 	assertBucketExistence(t, queue, false)
 }
+
+func TestAPIPushInRead(t *testing.T) {
+	t.Parallel()
+
+	dir, err := os.MkdirTemp("", "timeq-apitest")
+	require.NoError(t, err)
+	defer os.RemoveAll(dir)
+
+	queue, err := Open(dir, DefaultOptions())
+	require.NoError(t, err)
+
+	const N = 10
+	exp := testutils.GenItems(0, N, 1)
+	require.NoError(t, queue.Push(exp))
+	require.NoError(t, queue.Read(N, func(items Items) (ReadOp, error) {
+		// just push it right back.
+		return ReadOpPop, queue.Push(items)
+	}))
+
+	require.Equal(t, N, queue.Len())
+
+	got, err := PopCopy(queue, N)
+	require.NoError(t, err)
+	require.Equal(t, exp, got)
+	require.NoError(t, queue.Close())
+}

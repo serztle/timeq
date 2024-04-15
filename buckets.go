@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"slices"
 	"sync"
+	"sync/atomic"
 
 	"github.com/sahib/timeq/index"
 	"github.com/sahib/timeq/item"
@@ -24,13 +25,14 @@ type trailerKey struct {
 }
 
 type buckets struct {
-	mu       sync.Mutex
-	dir      string
-	tree     btree.Map[item.Key, *bucket]
-	trailers map[trailerKey]index.Trailer
-	opts     Options
-	forks    []ForkName
-	readBuf  Items
+	mu              sync.Mutex
+	isInTransaction int32 // indicates if we're currently in the ReadFn callback.
+	dir             string
+	tree            btree.Map[item.Key, *bucket]
+	trailers        map[trailerKey]index.Trailer
+	opts            Options
+	forks           []ForkName
+	readBuf         Items
 }
 
 func loadAllBuckets(dir string, opts Options) (*buckets, error) {
@@ -495,7 +497,6 @@ func binsplit(items item.Items, comp item.Key, fn func(item.Key) item.Key) int {
 	return pivotIdx + binsplit(items[pivotIdx:], comp, fn)
 }
 
-// Push pushes a batch of `items` to the queue.
 func (bs *buckets) Push(items item.Items) error {
 	if len(items) == 0 {
 		return nil
@@ -505,10 +506,19 @@ func (bs *buckets) Push(items item.Items) error {
 		return int(i.Key - j.Key)
 	})
 
-	bs.mu.Lock()
-	defer bs.mu.Unlock()
+	if atomic.LoadInt32(&bs.isInTransaction) == 0 {
+		// Only lock if we're not in a transaction currently.
+		// FIXME: This is rather hacky, as it could also allow another go
+		// routine to sneak in at that moment...
+		bs.mu.Lock()
+		defer bs.mu.Unlock()
+	}
 
-	// Sort items into the respective buckets:
+	return bs.pushSorted(items)
+}
+
+// Sort items into the respective buckets:
+func (bs *buckets) pushSorted(items item.Items) error {
 	for len(items) > 0 {
 		keyMod := bs.opts.BucketFunc(items[0].Key)
 		nextIdx := binsplit(items, keyMod, bs.opts.BucketFunc)
@@ -547,7 +557,13 @@ func (bs *buckets) Read(n int, fork ForkName, fn ReadOpFn) error {
 	var count = n
 	return bs.iter(load, func(key item.Key, b *bucket) error {
 		lenBefore := b.Len(fork)
-		if err := b.Read(count, &bs.readBuf, fork, fn); err != nil {
+		wrappedFn := func(items Items) (ReadOp, error) {
+			atomic.StoreInt32(&bs.isInTransaction, 1)
+			defer atomic.StoreInt32(&bs.isInTransaction, 0)
+			return fn(items)
+		}
+
+		if err := b.Read(count, &bs.readBuf, fork, wrappedFn); err != nil {
 			if bs.opts.ErrorMode == ErrorModeAbort {
 				return err
 			}

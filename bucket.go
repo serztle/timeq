@@ -350,7 +350,7 @@ func (b *bucket) Read(n int, dst *item.Items, fork ForkName, fn ReadOpFn) error 
 	}
 
 	if cap(*dst) < cap(items) {
-		// if we appened beyond what we pre-allocated,
+		// if we appended beyond what we pre-allocated,
 		// then use the newly pre-allocated slice.
 		*dst = items
 	}

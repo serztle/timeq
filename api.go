@@ -3,6 +3,7 @@ package timeq
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/sahib/timeq/item"
 )
@@ -19,6 +20,7 @@ type Key = item.Key
 
 // Queue is the high level API to the priority queue.
 type Queue struct {
+	mu      sync.Mutex
 	buckets *buckets
 }
 
@@ -43,6 +45,7 @@ func Open(dir string, opts Options) (*Queue, error) {
 }
 
 // Push pushes a batch of `items` to the queue.
+// It is allowed to call this function during the read callback.
 func (q *Queue) Push(items Items) error {
 	return q.buckets.Push(items)
 }
@@ -63,6 +66,9 @@ func (q *Queue) Push(items Items) error {
 // appending to a slice) then you can use the Copy() function of Items.
 //
 // You can return either ReadOpPop or ReadOpPeek from `fn`.
+//
+// You may only call Push() inside the read transaction.
+// All other operations will DEADLOCK if called!
 func (q *Queue) Read(n int, fn ReadOpFn) error {
 	return q.buckets.Read(n, "", fn)
 }
@@ -172,6 +178,9 @@ type Consumer interface {
 	Shovel(dst *Queue) (int, error)
 	Len() int
 	Fork(name ForkName) (*Fork, error)
+}
+
+type Transaction interface {
 }
 
 // Check that Queue also implements the Consumer interface.
