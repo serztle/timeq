@@ -154,16 +154,16 @@ func DefaultOptions() Options {
 		SyncMode:               SyncFull,
 		ErrorMode:              ErrorModeAbort,
 		Logger:                 DefaultLogger(),
-		BucketSplitConf:        DefaultBucketFunc,
+		BucketSplitConf:        DefaultBucketSplitConf,
 		MaxParallelOpenBuckets: 4,
 	}
 }
 
-// DefaultBucketFunc assumes that `key` is a nanosecond unix timestamps
+// DefaultBucketSplitConf assumes that `key` is a nanosecond unix timestamps
 // and divides data (roughly) in 2m minute buckets.
-var DefaultBucketFunc = ShiftBucketSplitConf(37)
+var DefaultBucketSplitConf = ShiftBucketSplitConf(37)
 
-// ShiftBucketSplitConf creates a fast BucketFunc that divides data into buckets
+// ShiftBucketSplitConf creates a fast BucketSplitConf that divides data into buckets
 // by masking `shift` less significant bits of the key. With a shift
 // of 37 you roughly get 2m buckets (if your key input are nanosecond-timestamps).
 // If you want to calculate the size of a shift, use this formula:
@@ -178,7 +178,7 @@ func ShiftBucketSplitConf(shift int) BucketSplitConf {
 	}
 }
 
-// FixedSizeBucketSplitConf returns a BucketFunc that divides buckets into
+// FixedSizeBucketSplitConf returns a BucketSplitConf that divides buckets into
 // equal sized buckets with `n` entries. This can also be used to create
 // time-based keys, if you use nanosecond based keys and pass time.Minute
 // to create a buckets with a size of one minute.

@@ -20,9 +20,9 @@ func TestAPIKeyTrunc(t *testing.T) {
 	t.Parallel()
 
 	stamp := time.Date(2023, 1, 1, 12, 13, 14, 15, time.UTC)
-	trunc1 := DefaultBucketFunc.Func(item.Key(stamp.UnixNano()))
-	trunc2 := DefaultBucketFunc.Func(item.Key(stamp.Add(time.Minute).UnixNano()))
-	trunc3 := DefaultBucketFunc.Func(item.Key(stamp.Add(time.Hour).UnixNano()))
+	trunc1 := DefaultBucketSplitConf.Func(item.Key(stamp.UnixNano()))
+	trunc2 := DefaultBucketSplitConf.Func(item.Key(stamp.Add(time.Minute).UnixNano()))
+	trunc3 := DefaultBucketSplitConf.Func(item.Key(stamp.Add(time.Hour).UnixNano()))
 
 	// First two stamps only differ by one minute. They should be truncated
 	// to the same value. One hour further should yield a different value.
@@ -385,8 +385,8 @@ func testAPIErrorModePush(t *testing.T, mode ErrorMode) {
 
 	logger := &LogBuffer{}
 	opts := Options{
-		ErrorMode:  mode,
-		Logger:     logger,
+		ErrorMode:       mode,
+		Logger:          logger,
 		BucketSplitConf: FixedSizeBucketSplitConf(10),
 	}
 
@@ -426,8 +426,8 @@ func testAPIErrorModePop(t *testing.T, mode ErrorMode) {
 
 	logger := &LogBuffer{}
 	opts := Options{
-		ErrorMode:  mode,
-		Logger:     logger,
+		ErrorMode:       mode,
+		Logger:          logger,
 		BucketSplitConf: FixedSizeBucketSplitConf(10),
 	}
 
@@ -481,8 +481,8 @@ func testAPIErrorModeDelete(t *testing.T, mode ErrorMode) {
 
 	logger := &LogBuffer{}
 	opts := Options{
-		ErrorMode:  mode,
-		Logger:     logger,
+		ErrorMode:       mode,
+		Logger:          logger,
 		BucketSplitConf: FixedSizeBucketSplitConf(10),
 	}
 
@@ -653,7 +653,7 @@ func TestAPIMaxParallelBuckets(t *testing.T) {
 	require.NoError(t, queue.Close())
 }
 
-func TestAPIFixedSizeBucketFunc(t *testing.T) {
+func TestAPIFixedSizeBucketSplitFunc(t *testing.T) {
 	// just to make sure that the func does not break,
 	// even though the test is really stupid.
 	fn := FixedSizeBucketSplitConf(100).Func

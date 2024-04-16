@@ -130,11 +130,11 @@ func BenchmarkCopyItems(b *testing.B) {
 
 var globalKey Key
 
-func BenchmarkDefaultBucketFunc(b *testing.B) {
+func BenchmarkDefaultBucketSplitConf(b *testing.B) {
 	b.Run("default", func(b *testing.B) {
 		globalKey = 23
 		for run := 0; run < b.N; run++ {
-			globalKey = DefaultBucketFunc.Func(globalKey)
+			globalKey = DefaultBucketSplitConf.Func(globalKey)
 		}
 	})
 

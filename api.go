@@ -139,7 +139,7 @@ func (q *Queue) Clear() error {
 // as the source queue. If you cannot guarantee this, you should implement a naive Shovel()
 // implementation that just uses Pop/Push.
 //
-// This method can be used if you want to change options like the BucketFunc or if you
+// This method can be used if you want to change options like the BucketSplitConf or if you
 // intend to have more than one queue that are connected by some logic. Examples for the
 // latter case would be a "deadletter queue" where you put failed calculations for later
 // re-calculations or a queue for unacknowledged items.

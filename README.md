@@ -92,7 +92,7 @@ without modifying the state of the other one. It's even possible to fork a fork
 again, resulting  in a consumer hierarchy. This is probably best explained by
 this diagram:
 
-![Fork](docs/fork.png)
+![Fork](docs/forks.svg)
 
 1. The initial state of the queue with 10 items in it,
 2. We fork the queue by calling `Fork("foo")`.
@@ -112,7 +112,7 @@ It opens up some interesting use cases:
 
 ## Design
 
-* All data is divided into buckets by a user-defined function (»`BucketFunc`«).
+* All data is divided into buckets by a user-defined function (»`BucketSplitConf`«).
 * Each bucket is it's own priority queue, responsible for a part of the key space.
 * A push to a bucket writes the batch of data to a memory-mapped log
   file on disk. The location of the batch is stored in an
@@ -130,7 +130,7 @@ On the initial load all bucket indexes are loaded, but no memory is mapped yet.
 * Each item payload might be at most 64M.
 * Each bucket can be at most 2^63 bytes in size.
 * Using priority keys close to the integer limits is most certainly a bad idea.
-* When a bucket was created with a specific `BucketFunc` it cannot be changed later.
+* When a bucket was created with a specific `BucketSplitConf` it cannot be changed later.
   `timeq` will error out in this case and the queue needs to be migrated.
   If this turns out as a practical issue we could implement an automated migration path.
 
