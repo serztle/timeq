@@ -151,7 +151,7 @@ func TestRealWorldAckQueue(t *testing.T) {
 	rng := rand.New(rand.NewSource(0))
 
 	opts := DefaultOptions()
-	opts.BucketFunc = ShiftBucketFunc(30)
+	opts.BucketSplitConf = ShiftBucketSplitConf(30)
 	opts.MaxParallelOpenBuckets = 4
 
 	waitingDir := filepath.Join(dir, "waiting")

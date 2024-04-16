@@ -73,7 +73,7 @@ func Open(dir string, opts Options) (*Queue, error) {
 		return nil, fmt.Errorf("buckets: %w", err)
 	}
 
-	if err := bs.ValidateBucketKeys(opts.BucketFunc); err != nil {
+	if err := bs.ValidateBucketKeys(opts.BucketSplitConf); err != nil {
 		return nil, err
 	}
 

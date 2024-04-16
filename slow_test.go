@@ -35,7 +35,7 @@ func TestAPI4GLog(t *testing.T) {
 	defer os.RemoveAll(dir)
 
 	opts := DefaultOptions()
-	opts.BucketFunc = ShiftBucketFunc(5 * 1024 * 1024 * 1024)
+	opts.BucketSplitConf = ShiftBucketSplitConf(5 * 1024 * 1024 * 1024)
 	queue, err := Open(dir, opts)
 	require.NoError(t, err)
 

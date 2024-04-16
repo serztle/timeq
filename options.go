@@ -76,6 +76,23 @@ func NullLogger() Logger {
 	return &writerLogger{w: io.Discard}
 }
 
+var (
+	// ErrChangedSplitFunc is returned when the configured split func
+	// in options does not fit to the state on disk.
+	ErrChangedSplitFunc = errors.New("split func changed")
+)
+
+// BucketSplitConf defines what keys are sorted in what bucket.
+// See Options.BucketSplitConf for more info.
+type BucketSplitConf struct {
+	// Func is the function that does the splitting.
+	Func func(item.Key) item.Key
+
+	// Name is used as identifier to figure out
+	// when the disk split func changed.
+	Name string
+}
+
 // Options gives you some knobs to configure the queue.
 // Read the individual options carefully, as some of them
 // can only be set on the first call to Open()
@@ -94,7 +111,7 @@ type Options struct {
 	// See the individual enum values for more info.
 	ErrorMode ErrorMode
 
-	// BucketFunc defines what key goes to what
+	// BucketSplitConf defines what key goes to what bucket.
 	// The provided function should clamp the key value to
 	// a common value. Each same value that was returned goes
 	// into the same  The returned value should be also
@@ -107,7 +124,7 @@ type Options struct {
 	// NOTE: This may not be changed after you opened a queue with it!
 	//       Only way to change is to create a new queue and shovel the
 	//       old data into it.
-	BucketFunc func(item.Key) item.Key
+	BucketSplitConf BucketSplitConf
 
 	// MaxParallelOpenBuckets limits the number of buckets that can be opened
 	// in parallel. Normally, operations like Push() will create more and more
@@ -137,39 +154,45 @@ func DefaultOptions() Options {
 		SyncMode:               SyncFull,
 		ErrorMode:              ErrorModeAbort,
 		Logger:                 DefaultLogger(),
-		BucketFunc:             DefaultBucketFunc,
+		BucketSplitConf:        DefaultBucketFunc,
 		MaxParallelOpenBuckets: 4,
 	}
 }
 
 // DefaultBucketFunc assumes that `key` is a nanosecond unix timestamps
 // and divides data (roughly) in 2m minute buckets.
-var DefaultBucketFunc = ShiftBucketFunc(37)
+var DefaultBucketFunc = ShiftBucketSplitConf(37)
 
-// ShiftBucketFunc creates a fast BucketFunc that divides data into buckets
+// ShiftBucketSplitConf creates a fast BucketFunc that divides data into buckets
 // by masking `shift` less significant bits of the key. With a shift
 // of 37 you roughly get 2m buckets (if your key input are nanosecond-timestamps).
 // If you want to calculate the size of a shift, use this formula:
 // (2 ** shift) / (1e9 / 60) = minutes
-func ShiftBucketFunc(shift int) func(key item.Key) item.Key {
+func ShiftBucketSplitConf(shift int) BucketSplitConf {
 	timeMask := ^item.Key(0) << shift
-	return func(key item.Key) item.Key {
-		return key & timeMask
+	return BucketSplitConf{
+		Name: fmt.Sprintf("shift:%d", shift),
+		Func: func(key item.Key) item.Key {
+			return key & timeMask
+		},
 	}
 }
 
-// FixedSizeBucketFunc returns a BucketFunc that divides buckets into
+// FixedSizeBucketSplitConf returns a BucketFunc that divides buckets into
 // equal sized buckets with `n` entries. This can also be used to create
 // time-based keys, if you use nanosecond based keys and pass time.Minute
 // to create a buckets with a size of one minute.
-func FixedSizeBucketFunc(n uint64) func(key item.Key) item.Key {
+func FixedSizeBucketSplitConf(n uint64) BucketSplitConf {
 	if n == 0 {
 		// avoid zero division.
 		n = 1
 	}
 
-	return func(key item.Key) item.Key {
-		return (key / item.Key(n)) * item.Key(n)
+	return BucketSplitConf{
+		Name: fmt.Sprintf("fixed:%d", n),
+		Func: func(key item.Key) item.Key {
+			return (key / item.Key(n)) * item.Key(n)
+		},
 	}
 }
 
@@ -188,7 +211,7 @@ func (o *Options) Validate() error {
 		return errors.New("invalid error mode")
 	}
 
-	if o.BucketFunc == nil {
+	if o.BucketSplitConf.Func == nil {
 		return errors.New("bucket func is not allowed to be empty")
 	}
 

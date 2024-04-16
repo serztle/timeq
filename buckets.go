@@ -1,6 +1,7 @@
 package timeq
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"math"
@@ -9,9 +10,14 @@ import (
 	"slices"
 	"sync"
 
+	"github.com/google/renameio"
 	"github.com/sahib/timeq/index"
 	"github.com/sahib/timeq/item"
 	"github.com/tidwall/btree"
+)
+
+const (
+	splitConfFile = "split.conf"
 )
 
 // trailerKey is the key to access a index.Trailer for a certain
@@ -52,10 +58,19 @@ func loadAllBuckets(dir string, opts Options) (*buckets, error) {
 		return nil, fmt.Errorf("read-dir: %w", err)
 	}
 
+	// some files like "split.conf" are expected to be there
+	// so don't be alert.
+	expectedFiles := 0
+
 	var dirsHandled int
 	tree := btree.Map[item.Key, *bucket]{}
 	trailers := make(map[trailerKey]index.Trailer, len(ents))
 	for _, ent := range ents {
+		switch ent.Name() {
+		case splitConfFile:
+			expectedFiles++
+		}
+
 		if !ent.IsDir() {
 			continue
 		}
@@ -88,7 +103,7 @@ func loadAllBuckets(dir string, opts Options) (*buckets, error) {
 		tree.Set(key, nil)
 	}
 
-	if dirsHandled == 0 && len(ents) > 0 {
+	if dirsHandled == 0 && len(ents) > expectedFiles {
 		return nil, fmt.Errorf("%s is not empty; refusing to create db", dir)
 	}
 
@@ -113,14 +128,37 @@ func loadAllBuckets(dir string, opts Options) (*buckets, error) {
 // of the key func. Failure here indicates that the key function changed. No error
 // does not guarantee that the key func did not change though (e.g. the identity func
 // would produce no error in this check)
-func (bs *buckets) ValidateBucketKeys(bucketFn func(item.Key) item.Key) error {
+func (bs *buckets) ValidateBucketKeys(bucketFn BucketSplitConf) error {
+	namePath := filepath.Join(bs.dir, splitConfFile)
+	nameData, err := os.ReadFile(namePath)
+	if err != nil {
+		// write the split name so we can figure it out later again.
+		if err := renameio.WriteFile(namePath, []byte(bucketFn.Name), 0600); err != nil {
+			// if we couldn't read and write it, then something is very likely wrong.
+			return err
+		}
+	} else {
+		// split file was valid, go check if it's still the desired split func.
+		nameData = bytes.TrimSpace(nameData)
+		if string(nameData) != bucketFn.Name {
+			return fmt.Errorf(
+				"%w: split func is currently »%s« but »%s« is configured - migrate?",
+				ErrChangedSplitFunc,
+				nameData,
+				bucketFn.Name,
+			)
+
+		}
+	}
+
 	for iter := bs.tree.Iter(); iter.Next(); {
 		ik := iter.Key()
-		bk := bucketFn(ik)
+		bk := bucketFn.Func(ik)
 
 		if ik != bk {
 			return fmt.Errorf(
-				"bucket with key %s does not match key func (%d) - did it change",
+				"%w: bucket with key %s does not match key func (%d) - did it change?",
+				ErrChangedSplitFunc,
 				ik,
 				bk,
 			)
@@ -524,8 +562,8 @@ func (bs *buckets) Push(items item.Items, locked bool) error {
 // Sort items into the respective buckets:
 func (bs *buckets) pushSorted(items item.Items) error {
 	for len(items) > 0 {
-		keyMod := bs.opts.BucketFunc(items[0].Key)
-		nextIdx := binsplit(items, keyMod, bs.opts.BucketFunc)
+		keyMod := bs.opts.BucketSplitConf.Func(items[0].Key)
+		nextIdx := binsplit(items, keyMod, bs.opts.BucketSplitConf.Func)
 		buck, err := bs.forKey(keyMod)
 		if err != nil {
 			if bs.opts.ErrorMode == ErrorModeAbort {
@@ -608,8 +646,8 @@ func (bs *buckets) Delete(fork ForkName, from, to item.Key) (int, error) {
 
 	// use the bucket func to figure out which buckets the range limits would be in.
 	// those buckets might not really exist though.
-	toBuckKey := bs.opts.BucketFunc(to)
-	fromBuckKey := bs.opts.BucketFunc(from)
+	toBuckKey := bs.opts.BucketSplitConf.Func(to)
+	fromBuckKey := bs.opts.BucketSplitConf.Func(from)
 
 	iter := bs.tree.Iter()
 	if !iter.Seek(fromBuckKey) {

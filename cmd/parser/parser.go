@@ -36,8 +36,11 @@ func optionsFromCtx(ctx *cli.Context) (timeq.Options, error) {
 		return opts, fmt.Errorf("invalid bucket size: %v", bucketSize)
 	}
 
-	opts.BucketFunc = func(key item.Key) item.Key {
-		return key / item.Key(bucketSize)
+	opts.BucketSplitConf = timeq.BucketSplitConf{
+		Name: fmt.Sprintf("cmd:%d", bucketSize),
+		Func: func(key item.Key) item.Key {
+			return key / item.Key(bucketSize)
+		},
 	}
 
 	return opts, nil

@@ -149,19 +149,24 @@ func TestBucketsValidateFunc(t *testing.T) {
 	bs, err := loadAllBuckets(dir, opts)
 	require.NoError(t, err)
 
-	require.NoError(t, bs.ValidateBucketKeys(func(key item.Key) item.Key {
+	require.NoError(t, bs.ValidateBucketKeys(BucketSplitConf{Name: "blub", Func: func(key item.Key) item.Key {
 		// id-func has to pass always.
 		return key
-	}))
+	}}))
 
-	require.NoError(t, bs.ValidateBucketKeys(func(key item.Key) item.Key {
+	require.NoError(t, bs.ValidateBucketKeys(BucketSplitConf{Name: "blub", Func: func(key item.Key) item.Key {
 		// 30 -> 30 and 50 -> 50
 		return (key * 10) / 10
-	}))
+	}}))
 
-	require.Error(t, bs.ValidateBucketKeys(func(key item.Key) item.Key {
+	require.Error(t, bs.ValidateBucketKeys(BucketSplitConf{Name: "foo", Func: func(key item.Key) item.Key {
+		// different name!
+		return key
+	}}))
+
+	require.Error(t, bs.ValidateBucketKeys(BucketSplitConf{Name: "blub", Func: func(key item.Key) item.Key {
 		return (key / 3) * 3
-	}))
+	}}))
 
 	require.NoError(t, bs.Close())
 }

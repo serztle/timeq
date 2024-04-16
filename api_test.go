@@ -20,9 +20,9 @@ func TestAPIKeyTrunc(t *testing.T) {
 	t.Parallel()
 
 	stamp := time.Date(2023, 1, 1, 12, 13, 14, 15, time.UTC)
-	trunc1 := DefaultBucketFunc(item.Key(stamp.UnixNano()))
-	trunc2 := DefaultBucketFunc(item.Key(stamp.Add(time.Minute).UnixNano()))
-	trunc3 := DefaultBucketFunc(item.Key(stamp.Add(time.Hour).UnixNano()))
+	trunc1 := DefaultBucketFunc.Func(item.Key(stamp.UnixNano()))
+	trunc2 := DefaultBucketFunc.Func(item.Key(stamp.Add(time.Minute).UnixNano()))
+	trunc3 := DefaultBucketFunc.Func(item.Key(stamp.Add(time.Hour).UnixNano()))
 
 	// First two stamps only differ by one minute. They should be truncated
 	// to the same value. One hour further should yield a different value.
@@ -53,7 +53,7 @@ func TestAPIOptionsValidate(t *testing.T) {
 	opts := Options{}
 	require.Error(t, opts.Validate())
 
-	opts.BucketFunc = func(k Key) Key { return k }
+	opts.BucketSplitConf.Func = func(k Key) Key { return k }
 	require.NoError(t, opts.Validate())
 	require.NotNil(t, opts.Logger)
 }
@@ -67,9 +67,7 @@ func TestAPIPushPopSeveralBuckets(t *testing.T) {
 
 	// Open queue with a bucket size of 10 items:
 	opts := DefaultOptions()
-	opts.BucketFunc = func(key Key) Key {
-		return (key / 10) * 10
-	}
+	opts.BucketSplitConf = FixedSizeBucketSplitConf(10)
 
 	queue, err := Open(dir, opts)
 	require.NoError(t, err)
@@ -215,9 +213,7 @@ func TestAPIDelete(t *testing.T) {
 	defer os.RemoveAll(dir)
 
 	opts := DefaultOptions()
-	opts.BucketFunc = func(k Key) Key {
-		return (k / 100) * 100
-	}
+	opts.BucketSplitConf = FixedSizeBucketSplitConf(100)
 
 	queue, err := Open(dir, opts)
 	require.NoError(t, err)
@@ -262,9 +258,7 @@ func TestAPIPeek(t *testing.T) {
 	defer os.RemoveAll(dir)
 
 	opts := DefaultOptions()
-	opts.BucketFunc = func(k Key) Key {
-		return (k / 100) * 100
-	}
+	opts.BucketSplitConf = FixedSizeBucketSplitConf(100)
 
 	queue, err := Open(dir, opts)
 	require.NoError(t, err)
@@ -319,9 +313,7 @@ func TestAPIMove(t *testing.T) {
 	dstDir := filepath.Join(dir, "dst")
 
 	opts := DefaultOptions()
-	opts.BucketFunc = func(k Key) Key {
-		return (k / 100) * 100
-	}
+	opts.BucketSplitConf = FixedSizeBucketSplitConf(100)
 
 	srcQueue, err := Open(srcDir, opts)
 	require.NoError(t, err)
@@ -393,11 +385,9 @@ func testAPIErrorModePush(t *testing.T, mode ErrorMode) {
 
 	logger := &LogBuffer{}
 	opts := Options{
-		ErrorMode: mode,
-		Logger:    logger,
-		BucketFunc: func(key Key) Key {
-			return (key / 10) * 10
-		},
+		ErrorMode:  mode,
+		Logger:     logger,
+		BucketSplitConf: FixedSizeBucketSplitConf(10),
 	}
 
 	queue, err := Open(dir, opts)
@@ -436,11 +426,9 @@ func testAPIErrorModePop(t *testing.T, mode ErrorMode) {
 
 	logger := &LogBuffer{}
 	opts := Options{
-		ErrorMode: mode,
-		Logger:    logger,
-		BucketFunc: func(key Key) Key {
-			return (key / 10) * 10
-		},
+		ErrorMode:  mode,
+		Logger:     logger,
+		BucketSplitConf: FixedSizeBucketSplitConf(10),
 	}
 
 	queue, err := Open(dir, opts)
@@ -493,11 +481,9 @@ func testAPIErrorModeDelete(t *testing.T, mode ErrorMode) {
 
 	logger := &LogBuffer{}
 	opts := Options{
-		ErrorMode: mode,
-		Logger:    logger,
-		BucketFunc: func(key Key) Key {
-			return (key / 10) * 10
-		},
+		ErrorMode:  mode,
+		Logger:     logger,
+		BucketSplitConf: FixedSizeBucketSplitConf(10),
 	}
 
 	queue, err := Open(dir, opts)
@@ -534,7 +520,7 @@ func TestAPIBadOptions(t *testing.T) {
 	defer os.RemoveAll(dir)
 
 	opts := DefaultOptions()
-	opts.BucketFunc = nil
+	opts.BucketSplitConf.Func = nil
 	_, err = Open(dir, opts)
 	require.Error(t, err)
 }
@@ -610,9 +596,7 @@ func TestAPIMaxParallelBuckets(t *testing.T) {
 
 	const N = 1000 // bucket size
 	opts := DefaultOptions()
-	opts.BucketFunc = func(key item.Key) item.Key {
-		return (key / N) * N
-	}
+	opts.BucketSplitConf = FixedSizeBucketSplitConf(N)
 
 	// This test should fail if this is set to 0!
 	opts.MaxParallelOpenBuckets = 1
@@ -672,7 +656,7 @@ func TestAPIMaxParallelBuckets(t *testing.T) {
 func TestAPIFixedSizeBucketFunc(t *testing.T) {
 	// just to make sure that the func does not break,
 	// even though the test is really stupid.
-	fn := FixedSizeBucketFunc(100)
+	fn := FixedSizeBucketSplitConf(100).Func
 	for idx := 0; idx < 1000; idx++ {
 		require.Equal(t, item.Key(idx/100)*100, fn(item.Key(idx)))
 	}
@@ -695,9 +679,7 @@ func testAPIDoNotCrashOnMultiBucketPop(t *testing.T, maxParallelOpenBuckets int)
 
 	const N = 100
 	opts := DefaultOptions()
-	opts.BucketFunc = func(key item.Key) item.Key {
-		return (key / N) * N
-	}
+	opts.BucketSplitConf = FixedSizeBucketSplitConf(N)
 
 	opts.MaxParallelOpenBuckets = maxParallelOpenBuckets
 
@@ -749,9 +731,7 @@ func TestAPIShovelMemoryUsage(t *testing.T) {
 
 	const N = 10 // bucket size
 	opts := DefaultOptions()
-	opts.BucketFunc = func(key item.Key) item.Key {
-		return (key / N) * N
-	}
+	opts.BucketSplitConf = FixedSizeBucketSplitConf(N)
 
 	// This test should fail if this is set to 0!
 	opts.MaxParallelOpenBuckets = 1

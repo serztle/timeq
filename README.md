@@ -7,7 +7,7 @@ A file-based priority queue in Go.
 
 Generally speaking, `timeq` can be used to implement these and more:
 
-- A streaming platform like [NATS](https://nats.io) or message brokers similar to [Mosquitto](https://mosquitto.org)
+- A streaming platform like [NATS](https://nats.io) or message brokers similar to [Mosquitto](https://mosquitto.org).
 - A file-backend job queue with different priorities.
 - A telemetry pipeline for IoT devices to buffer offline data.
 - Wherever you would use a regular file-based queue.
@@ -74,14 +74,14 @@ goos: linux
 goarch: amd64
 pkg: github.com/sahib/timeq
 cpu: 12th Gen Intel(R) Core(TM) i7-1270P
-BenchmarkPopSyncNone-16      	  35924	    33738 ns/op	    240 B/op	      5 allocs/op
-BenchmarkPopSyncData-16      	  35286	    33938 ns/op	    240 B/op	      5 allocs/op
-BenchmarkPopSyncIndex-16     	  34030	    34003 ns/op	    240 B/op	      5 allocs/op
-BenchmarkPopSyncFull-16      	  35170	    33592 ns/op	    240 B/op	      5 allocs/op
-BenchmarkPushSyncNone-16     	  20336	    56867 ns/op	     72 B/op	      2 allocs/op
-BenchmarkPushSyncData-16     	  20630	    58613 ns/op	     72 B/op	      2 allocs/op
-BenchmarkPushSyncIndex-16    	  20684	    58782 ns/op	     72 B/op	      2 allocs/op
-BenchmarkPushSyncFull-16     	  19994	    59491 ns/op	     72 B/op	      2 allocs/op
+BenchmarkPopSyncNone-16      35924  33738 ns/op  240 B/op  5 allocs/op
+BenchmarkPopSyncData-16      35286  33938 ns/op  240 B/op  5 allocs/op
+BenchmarkPopSyncIndex-16     34030  34003 ns/op  240 B/op  5 allocs/op
+BenchmarkPopSyncFull-16      35170  33592 ns/op  240 B/op  5 allocs/op
+BenchmarkPushSyncNone-16     20336  56867 ns/op   72 B/op  2 allocs/op
+BenchmarkPushSyncData-16     20630  58613 ns/op   72 B/op  2 allocs/op
+BenchmarkPushSyncIndex-16    20684  58782 ns/op   72 B/op  2 allocs/op
+BenchmarkPushSyncFull-16     19994  59491 ns/op   72 B/op  2 allocs/op
 ```
 
 ## Multi Consumer
@@ -272,6 +272,7 @@ Additionally we have a bunch of benchmarks and fuzzing tests.
 
 Yes. There is no real speed benefit from doing so though currently,
 as the current locking strategy prohibits parallel pushes and reads.
+Future releases might improve on this.
 
 ## License
 

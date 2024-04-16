@@ -134,7 +134,7 @@ func BenchmarkDefaultBucketFunc(b *testing.B) {
 	b.Run("default", func(b *testing.B) {
 		globalKey = 23
 		for run := 0; run < b.N; run++ {
-			globalKey = DefaultBucketFunc(globalKey)
+			globalKey = DefaultBucketFunc.Func(globalKey)
 		}
 	})
 
