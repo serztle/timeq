@@ -92,7 +92,7 @@ without modifying the state of the other one. It's even possible to fork a fork
 again, resulting  in a consumer hierarchy. This is probably best explained by
 this diagram:
 
-![Fork](docs/forks.svg)
+<img src="docs/forks.svg" width="300">
 
 1. The initial state of the queue with 10 items in it,
 2. We fork the queue by calling `Fork("foo")`.
