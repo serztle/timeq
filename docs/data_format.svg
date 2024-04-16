@@ -2,15 +2,16 @@
 <!-- Created with Inkscape (http://www.inkscape.org/) -->
 
 <svg
-   width="626.44336mm"
-   height="178.73366mm"
-   viewBox="0 0 626.44336 178.73366"
+   width="693.39758mm"
+   height="200.65881mm"
+   viewBox="0 0 693.39758 200.65882"
    version="1.1"
    id="svg1"
    sodipodi:docname="data_format.svg"
-   inkscape:version="1.3 (0e150ed6c4, 2023-07-21)"
+   inkscape:version="1.3.2 (091e20ef0f, 2023-11-25, custom)"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
    xmlns="http://www.w3.org/2000/svg"
    xmlns:svg="http://www.w3.org/2000/svg"
    xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
@@ -25,33 +26,111 @@
      inkscape:pagecheckerboard="0"
      inkscape:deskcolor="#d1d1d1"
      inkscape:document-units="mm"
-     inkscape:zoom="0.35355339"
-     inkscape:cx="1236.0227"
-     inkscape:cy="557.20014"
-     inkscape:window-width="1918"
-     inkscape:window-height="1028"
+     inkscape:zoom="0.55272699"
+     inkscape:cx="1244.7375"
+     inkscape:cy="599.7536"
+     inkscape:window-width="2560"
+     inkscape:window-height="1335"
      inkscape:window-x="0"
      inkscape:window-y="0"
-     inkscape:window-maximized="1"
+     inkscape:window-maximized="0"
      inkscape:current-layer="layer1" />
   <defs
-     id="defs1" />
+     id="defs1">
+    <pattern
+       inkscape:collect="always"
+       xlink:href="#Strips1_1"
+       preserveAspectRatio="xMidYMid"
+       id="pattern4"
+       patternTransform="matrix(1,0,0,1.688729,-30.893205,-60.536033)"
+       x="14"
+       y="0"
+       width="26.8" />
+    <pattern
+       inkscape:collect="always"
+       patternUnits="userSpaceOnUse"
+       width="2"
+       height="10"
+       patternTransform="translate(0,0) scale(2,2)"
+       preserveAspectRatio="xMidYMid"
+       id="Strips1_1"
+       style="fill:#000000"
+       inkscape:stockid="Stripes 01 (1:1)"
+       inkscape:isstock="true"
+       inkscape:label="Streifen 01 (1:1)">
+      <rect
+   style="stroke:none"
+   x="0"
+   y="-0.5"
+   width="1"
+   height="11"
+   id="rect134" />
+
+    </pattern>
+    <pattern
+       inkscape:collect="always"
+       xlink:href="#Strips1_1-2"
+       preserveAspectRatio="xMidYMid"
+       id="pattern4-7"
+       patternTransform="matrix(1,0,0,1.5723015,-30.459214,58.227543)"
+       x="14"
+       y="0"
+       width="26.8" />
+    <pattern
+       inkscape:collect="always"
+       patternUnits="userSpaceOnUse"
+       width="2"
+       height="10"
+       patternTransform="translate(0,0) scale(2,2)"
+       preserveAspectRatio="xMidYMid"
+       id="Strips1_1-2"
+       style="fill:#000000"
+       inkscape:stockid="Stripes 01 (1:1)"
+       inkscape:isstock="true"
+       inkscape:label="Streifen 01 (1:1)">
+      <rect
+   style="stroke:none"
+   x="0"
+   y="-0.5"
+   width="1"
+   height="11"
+   id="rect134-4" />
+
+    </pattern>
+  </defs>
   <g
      inkscape:label="Ebene 1"
      inkscape:groupmode="layer"
      id="layer1"
-     transform="translate(-9.306707,-1.1744449)">
+     transform="translate(-4.4505072,22.931602)">
+    <rect
+       style="opacity:0.573702;fill:url(#pattern4);fill-opacity:1;stroke:none;stroke-width:8.64695;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:none;paint-order:stroke fill markers"
+       id="rect2"
+       width="623.44141"
+       height="34.936325"
+       x="4.4505072"
+       y="32.876133"
+       ry="4.1812415" />
+    <rect
+       style="opacity:0.573702;fill:url(#pattern4-7);fill-opacity:1;stroke:none;stroke-width:8.34355;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:none;paint-order:stroke fill markers"
+       id="rect2-6"
+       width="623.44141"
+       height="32.527683"
+       x="4.8844981"
+       y="145.19952"
+       ry="3.8929708" />
     <text
        xml:space="preserve"
-       style="font-weight:600;font-size:16.9333px;line-height:79.3747px;font-family:Vollkorn;-inkscape-font-specification:'Vollkorn Semi-Bold';letter-spacing:0px;word-spacing:0px;fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
-       x="18.119345"
-       y="72.870743"
-       id="text1"><tspan
+       style="font-weight:600;font-size:15.9855px;line-height:74.9321px;font-family:Vollkorn;-inkscape-font-specification:'Vollkorn Semi-Bold';letter-spacing:0px;word-spacing:0px;fill:none;stroke:#000000;stroke-width:0.249774px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       x="18.898949"
+       y="61.472668"
+       id="text1"
+       transform="scale(0.9428861,1.0605735)"><tspan
          sodipodi:role="line"
          id="tspan1"
-         x="18.119345"
-         y="72.870743"
-         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:16.9333px;line-height:79.3747px;font-family:'Fira Code';-inkscape-font-specification:'Fira Code';fill:#000000;fill-opacity:1;stroke-width:0.264583px">0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19</tspan></text>
+         x="18.898949"
+         y="61.472668"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:15.9855px;line-height:74.9321px;font-family:'Fira Code';-inkscape-font-specification:'Fira Code';fill:#000000;fill-opacity:1;stroke-width:0.249774px">0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21 22 23</tspan></text>
     <text
        xml:space="preserve"
        style="font-weight:600;font-size:16.9333px;line-height:79.3747px;font-family:Vollkorn;-inkscape-font-specification:'Vollkorn Semi-Bold';letter-spacing:0px;word-spacing:0px;fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
@@ -73,82 +152,83 @@
          id="tspan1-1"
          x="12.276495"
          y="14.396177"
-         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:16.9333px;line-height:79.3747px;font-family:'Fira Code';-inkscape-font-specification:'Fira Code';fill:#000000;fill-opacity:1;stroke-width:0.264583px">idx.log:</tspan></text>
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:16.9333px;line-height:79.3747px;font-family:'Fira Code';-inkscape-font-specification:'Fira Code';fill:#000000;fill-opacity:1;stroke-width:0.264583px">idx.log: 24 byte</tspan></text>
     <text
        xml:space="preserve"
-       style="font-weight:600;font-size:16.9333px;line-height:79.3747px;font-family:Vollkorn;-inkscape-font-specification:'Vollkorn Semi-Bold';letter-spacing:0px;word-spacing:0px;fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
-       x="15.858617"
-       y="179.42021"
-       id="text1-5"><tspan
+       style="font-weight:600;font-size:15.8342px;line-height:74.2226px;font-family:Vollkorn;-inkscape-font-specification:'Vollkorn Semi-Bold';letter-spacing:0px;word-spacing:0px;fill:none;stroke:#000000;stroke-width:0.247409px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       x="18.265478"
+       y="163.31506"
+       id="text1-5"
+       transform="scale(0.93377779,1.0709186)"><tspan
          sodipodi:role="line"
          id="tspan1-3"
-         x="15.858617"
-         y="179.42021"
-         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:16.9333px;line-height:79.3747px;font-family:'Fira Code';-inkscape-font-specification:'Fira Code';fill:#000000;fill-opacity:1;stroke-width:0.264583px">0  1  2  3  4  5  6  7  8  9  10 11 12 .. .. ..     n n+1 n+2 </tspan></text>
+         x="18.265478"
+         y="163.31506"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:15.8342px;line-height:74.2226px;font-family:'Fira Code';-inkscape-font-specification:'Fira Code';fill:#000000;fill-opacity:1;stroke-width:0.247409px">0  1  2  3  4  5  6  7  8  9  10 11 n⁰ .. .. .. .. .. .. .. nˢᶻᵉ -2 -1</tspan></text>
     <rect
-       style="opacity:0.997;fill:#d01f1f;fill-opacity:1;stroke:#000000;stroke-width:2.86612;stroke-linecap:round;stroke-linejoin:round;stroke-opacity:1;paint-order:stroke fill markers"
+       style="opacity:0.997;fill:#d01f1f;fill-opacity:1;stroke:#000000;stroke-width:2.68231;stroke-linecap:round;stroke-linejoin:round;stroke-opacity:1;paint-order:stroke fill markers"
        id="rect1"
-       width="245.54863"
-       height="23.440968"
-       x="10.739767"
-       y="23.531288"
-       ry="2.8092992" />
+       width="213.39021"
+       height="23.624777"
+       x="10.647861"
+       y="23.439383"
+       ry="2.8313282" />
     <rect
-       style="opacity:0.997;fill:#d01f1f;fill-opacity:1;stroke:#000000;stroke-width:2.86612;stroke-linecap:round;stroke-linejoin:round;stroke-opacity:1;paint-order:stroke fill markers"
+       style="opacity:0.997;fill:#d01f1f;fill-opacity:1;stroke:#000000;stroke-width:2.67425;stroke-linecap:round;stroke-linejoin:round;stroke-opacity:1;paint-order:stroke fill markers"
        id="rect1-93"
-       width="245.54863"
-       height="23.440968"
-       x="140.56961"
-       y="134.68846"
-       ry="2.8092992" />
+       width="212.03726"
+       height="23.632839"
+       x="119.47979"
+       y="134.43651"
+       ry="2.832294" />
     <rect
-       style="opacity:0.997;fill:#b270ff;fill-opacity:1;stroke:#000000;stroke-width:2.055;stroke-linecap:round;stroke-linejoin:round;stroke-opacity:1;paint-order:stroke fill markers"
+       style="opacity:0.997;fill:#b270ff;fill-opacity:1;stroke:#000000;stroke-width:1.92357;stroke-linecap:round;stroke-linejoin:round;stroke-opacity:1;paint-order:stroke fill markers"
        id="rect1-93-0"
-       width="122.01065"
-       height="24.25209"
-       x="17.31447"
-       y="134.19078"
-       ry="2.9065087" />
+       width="106.32726"
+       height="24.383516"
+       x="11.540824"
+       y="133.96904"
+       ry="2.9222596" />
     <rect
-       style="opacity:0.997;fill:#9f9f9f;fill-opacity:1;stroke:#000000;stroke-width:2.38858;stroke-linecap:round;stroke-linejoin:round;stroke-opacity:1;paint-order:stroke fill markers"
+       style="opacity:0.997;fill:#4c8cf2;fill-opacity:1;stroke:#000000;stroke-width:2.82616;stroke-linecap:round;stroke-linejoin:round;stroke-opacity:1;paint-order:stroke fill markers"
        id="rect1-93-0-0"
-       width="167.13554"
-       height="23.91851"
-       x="388.52942"
-       y="134.62311"
-       ry="2.8665304" />
+       width="238.34081"
+       height="23.480942"
+       x="333.53275"
+       y="134.68587"
+       ry="2.8140893" />
     <rect
-       style="opacity:0.997;fill:#7c57e6;fill-opacity:1;stroke:#000000;stroke-width:1.44906;stroke-linecap:round;stroke-linejoin:round;stroke-opacity:1;paint-order:stroke fill markers"
+       style="opacity:0.997;fill:#7c57e6;fill-opacity:1;stroke:#000000;stroke-width:1.37268;stroke-linecap:round;stroke-linejoin:round;stroke-opacity:1;paint-order:stroke fill markers"
        id="rect1-93-0-0-0"
-       width="59.187626"
-       height="24.858028"
-       x="556.6969"
-       y="134.06592"
-       ry="2.9791276" />
+       width="52.949913"
+       height="24.934406"
+       x="573.83331"
+       y="133.53322"
+       ry="2.9882812" />
     <rect
-       style="opacity:0.997;fill:#d08e1f;fill-opacity:1;stroke:#000000;stroke-width:2.00426;stroke-linecap:round;stroke-linejoin:round;stroke-opacity:1;paint-order:stroke fill markers"
+       style="opacity:0.997;fill:#d08e1f;fill-opacity:1;stroke:#000000;stroke-width:2.66743;stroke-linecap:round;stroke-linejoin:round;stroke-opacity:1;paint-order:stroke fill markers"
        id="rect1-9"
-       width="115.81834"
-       height="24.302824"
-       x="257.91498"
-       y="23.188364"
-       ry="2.9125891" />
+       width="210.89706"
+       height="23.639656"
+       x="226.61031"
+       y="23.519949"
+       ry="2.8331113" />
     <rect
-       style="opacity:0.997;fill:#8ad01f;fill-opacity:1;stroke:#000000;stroke-width:2.05566;stroke-linecap:round;stroke-linejoin:round;stroke-opacity:1;paint-order:stroke fill markers"
+       style="opacity:0.997;fill:#8ad01f;fill-opacity:1;stroke:#000000;stroke-width:1.91516;stroke-linecap:round;stroke-linejoin:round;stroke-opacity:1;paint-order:stroke fill markers"
        id="rect1-9-3"
-       width="122.09324"
-       height="24.251423"
-       x="375.27097"
-       y="23.814898"
-       ry="2.9064288" />
+       width="105.36361"
+       height="24.391922"
+       x="439.83035"
+       y="23.183382"
+       ry="2.9232669" />
     <rect
-       style="opacity:0.997;fill:#1fb9d0;fill-opacity:1;stroke:#000000;stroke-width:2.01664;stroke-linecap:round;stroke-linejoin:round;stroke-opacity:1;paint-order:stroke fill markers"
+       style="opacity:0.997;fill:#1fb9d0;fill-opacity:1;stroke:#000000;stroke-width:1.91861;stroke-linecap:round;stroke-linejoin:round;stroke-opacity:1;paint-order:stroke fill markers"
        id="rect1-9-3-2"
-       width="117.31339"
-       height="24.290443"
-       x="498.9523"
-       y="23.931089"
-       ry="2.9111052" />
+       width="105.75857"
+       height="24.388472"
+       x="547.19189"
+       y="23.271114"
+       ry="2.9228535" />
     <text
        xml:space="preserve"
        style="font-weight:600;font-size:16.9333px;line-height:79.3747px;font-family:Vollkorn;-inkscape-font-specification:'Vollkorn Semi-Bold';letter-spacing:0px;word-spacing:0px;fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
@@ -159,22 +239,49 @@
          id="tspan1-1-3"
          x="13.340631"
          y="41.22451"
-         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:16.9333px;line-height:79.3747px;font-family:'Fira Code';-inkscape-font-specification:'Fira Code';fill:#000000;fill-opacity:1;stroke-width:0.264583px">Key                      Off        Len          NEntries</tspan></text>
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:16.9333px;line-height:79.3747px;font-family:'Fira Code';-inkscape-font-specification:'Fira Code';fill:#000000;fill-opacity:1;stroke-width:0.264583px">Key                   Off                 Len        NEntries</tspan></text>
     <text
        xml:space="preserve"
        style="font-weight:600;font-size:16.9333px;line-height:79.3747px;font-family:Vollkorn;-inkscape-font-specification:'Vollkorn Semi-Bold';letter-spacing:0px;word-spacing:0px;fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
-       x="20.221338"
-       y="152.08252"
+       x="14.513405"
+       y="151.9265"
        id="text1-9-9-5"><tspan
          sodipodi:role="line"
          id="tspan1-1-3-4"
-         x="20.221338"
-         y="152.08252"
-         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:16.9333px;line-height:79.3747px;font-family:'Fira Code';-inkscape-font-specification:'Fira Code';fill:#000000;fill-opacity:1;stroke-width:0.264583px">Size         Key                     Payload ($Size) FF FF</tspan></text>
+         x="14.513405"
+         y="151.9265"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:16.9333px;line-height:79.3747px;font-family:'Fira Code';-inkscape-font-specification:'Fira Code';fill:#000000;fill-opacity:1;stroke-width:0.264583px">Size         Key                     Payload ($Size)   FF FF</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-weight:600;font-size:1.41111px;line-height:6.61458px;font-family:Vollkorn;-inkscape-font-specification:'Vollkorn Semi-Bold';letter-spacing:0px;word-spacing:0px;fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       x="418.56903"
+       y="-22.148788"
+       id="text4"><tspan
+         sodipodi:role="line"
+         id="tspan4"
+         style="stroke-width:0.264583px"
+         x="418.56903"
+         y="-22.148788">z</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-weight:600;font-size:1.41111px;line-height:6.61458px;font-family:Vollkorn;-inkscape-font-specification:'Vollkorn Semi-Bold';letter-spacing:0px;word-spacing:0px;fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       x="697.10901"
+       y="49.516582"
+       id="text5"><tspan
+         sodipodi:role="line"
+         id="tspan5"
+         style="stroke-width:0.264583px"
+         x="697.10901"
+         y="49.516582">s</tspan></text>
   </g>
   <metadata
      id="metadata1">
     <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <cc:license
+           rdf:resource="http://creativecommons.org/licenses/by/4.0/" />
+      </cc:Work>
       <cc:License
          rdf:about="http://creativecommons.org/licenses/by/4.0/">
         <cc:permits
@@ -188,11 +295,6 @@
         <cc:permits
            rdf:resource="http://creativecommons.org/ns#DerivativeWorks" />
       </cc:License>
-      <cc:Work
-         rdf:about="">
-        <cc:license
-           rdf:resource="http://creativecommons.org/licenses/by/4.0/" />
-      </cc:Work>
     </rdf:RDF>
   </metadata>
 </svg>
