@@ -135,12 +135,6 @@ type Options struct {
 	// If you tend to access your data with rather random keys, you might want
 	// to increase this number, depending on how much resources you have.
 	//
-	// This is currently only applies to write operations (i.e. Push() and so on),
-	// not for read operations like Pop() (as memory needs to stay intact when
-	// reading from several buckets). If you have situations where you do read-only
-	// operations for some time you should throw in a CloseUnused() call from time
-	// to time to make sure memory gets cleaned up.
-	//
 	// If this number is <= 0, then this feature is disabled, which is not
 	// recommended.
 	MaxParallelOpenBuckets int
