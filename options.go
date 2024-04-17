@@ -19,7 +19,7 @@ func (sm SyncMode) IsValid() bool {
 // https://www.sqlite.org/pragma.html#pragma_synchronous
 const (
 	// SyncNone does not sync on normal operation (only on close)
-	SyncNone = 0
+	SyncNone = SyncMode(0)
 	// SyncData only synchronizes the data log
 	SyncData = SyncMode(1 << iota)
 	// SyncIndex only synchronizes the index log (does not make sense alone)
