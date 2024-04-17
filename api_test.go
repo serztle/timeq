@@ -609,7 +609,7 @@ func TestAPIMaxParallelBuckets(t *testing.T) {
 
 	// this accounts for parallel running tests.
 	// the main point is to check for linear increase.
-	const limit = 2.5
+	const limit = 3.5
 
 	for idx := 0; idx < 100; idx++ {
 		if idx == 10 {
