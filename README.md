@@ -94,9 +94,9 @@ this diagram:
 
 <img src="docs/forks.svg" width="300">
 
-1. The initial state of the queue with 10 items in it,
+1. The initial state of the queue with 8 items in it,
 2. We fork the queue by calling `Fork("foo")`.
-3. We consume 5 items from the fork via `fork.Pop()`.
+3. We consume 3 items from the fork via `fork.Pop()`.
 4. Pushing new data will go to all existing forks.
 
 This is implemented efficiently (see below) by just having duplicated indexes.
@@ -150,6 +150,7 @@ Example: If you have two buckets, your data looks like this on this:
 
 ```
 /path/to/db/
+├── split.conf
 ├── K00000000000000000001
 │   ├── dat.log
 │   ├── idx.log
@@ -191,7 +192,7 @@ decreases whenever you pop something. It does decrease, but in batches.
 ### Can timeq be also used with non-time based keys?
 
 There are no notable places where the key of an item is actually assumed to be
-timestamp, except for the default bucket func (which can be configured). If you
+timestamp, except for the default `BucketSplitConf` (which can be configured). If you
 find a good way to sort your data into buckets you should be good to go. Keep
 in mind that timestamps were the idea behind the original design, so your
 mileage may vary - always benchmark your individual usecase. You can modify one
@@ -240,7 +241,6 @@ performance with less duplicates. It should not be very significant though.
 
 If you want to use priority keys that are in a very narrow range (thus many
 duplicates) then you can think about spreading the range a bit wider.
-
 For example: You have priority keys from zero to ten for the tasks in your job
 queue. Instead of using zero to ten as keys, you can add the job-id to the key
 and shift the priority: ``(prio << 32) | jobID``.
