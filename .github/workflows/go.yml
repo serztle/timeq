@@ -20,7 +20,7 @@ jobs:
       matrix:
         go: [ '1.21', '1.22' ]
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
@@ -33,7 +33,7 @@ jobs:
       run: go test -v ./...
 
     - name: golangci-lint
-      uses: golangci/golangci-lint-action@v3
+      uses: golangci/golangci-lint-action@v4
       with:
         version: v1.54
         skip-pkg-cache: true
