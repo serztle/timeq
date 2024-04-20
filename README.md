@@ -247,11 +247,12 @@ and shift the priority: ``(prio << 32) | jobID``.
 
 ### How failsafe is ``timeq``?
 
-I use it on a big fleet of embedded devices in the field, so it's already quite
-a bit battle tested. Design wise, damaged index files can be regenerated from
-the data log. There's no error correction code applied in the data log and no
-checksums are currently written. If you need this, I'm happy if a PR comes in
-that enables it optionally.
+I use it on a big fleet of embedded devices in the field at
+[GermanBionic](https://germanbionic.com), so it's already quite a bit battle
+tested. Design wise, damaged index files can be regenerated from the data log.
+There's no error correction code applied in the data log and no checksums are
+currently written. If you need this, I'm happy if a PR comes in that enables it
+optionally.
 
 For durability, the design is build to survive crashes without data loss (Push,
 Read) but, in some cases, it might result in duplicated data (Shovel). My
