@@ -6,23 +6,12 @@ import (
 	"github.com/sahib/timeq/item"
 )
 
-// NOTE: There is quite some performance potential hidden here,
-// if we manage to fit Iter in a single cache line:
-//
-// Possible ideas to get down from 104 to 64:
-//
-//   - Always pass Item out on Next() as out param. -> -32
-//     -> Not possible, because the item might not be consumed directly
-//     as we might realize that another iter has more priority.
-//   - Do not use exhausted, set len to 0.
-//     -> Does not work, as currLen is zero before last call to Next()
-//   - continueOnErr can be part of Log. -8 (if exhausted goes away too)
 type Iter struct {
 	firstKey         item.Key
 	currOff, prevOff item.Off
 	item             item.Item
-	currLen          item.Off
-	exhausted        bool       // Merge flags with currLen to a currLenFlags field, 8 bytes.
+	currLen          uint32
+	exhausted        bool
 	continueOnErr    bool
 }
 
@@ -90,7 +79,7 @@ func (li *Iter) CurrentLocation() item.Location {
 	return item.Location{
 		Key: li.item.Key,
 		Off: li.prevOff,
-		Len: li.currLen + 1,
+		Len: item.Off(li.currLen + 1),
 	}
 }
 
