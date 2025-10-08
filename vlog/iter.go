@@ -21,35 +21,35 @@ type Iter struct {
 	firstKey         item.Key
 	currOff, prevOff item.Off
 	item             item.Item
-	log              *Log
-	err              error
-	currLen, prevLen item.Off
-	exhausted        bool
+	// log              *Log       // It is possible to give the Next() function this attribute, which saves 8 bytes.
+	err              error      // Return for each Next() call, which saves 16 bytes.
+	currLen, prevLen item.Off   // Only one length field, 8 bytes.
+	exhausted        bool       // Merge flags with currLen to a currLenFlags field, 8 bytes.
 	continueOnErr    bool
 }
 
-func (li *Iter) Next() bool {
+func (li *Iter) Next(log *Log) bool {
 	if li.currLen == 0 || li.exhausted {
 		li.exhausted = true
 		return false
 	}
 
-	if len(li.log.mmap) > 0 && li.currOff >= item.Off(li.log.size) {
+	if len(log.mmap) > 0 && li.currOff >= item.Off(log.size) {
 		// stop iterating when end of log reached.
 		li.exhausted = true
 		return false
 	}
 
 	for {
-		if err := li.log.readItemAt(li.currOff, &li.item); err != nil {
+		if err := log.readItemAt(li.currOff, &li.item); err != nil {
 			if !li.continueOnErr {
 				li.err = err
 				li.exhausted = true
 				return false
 			}
 
-			li.currOff = li.log.findNextItem(li.currOff)
-			if li.currOff >= item.Off(li.log.size) {
+			li.currOff = log.findNextItem(li.currOff)
+			if li.currOff >= item.Off(log.size) {
 				li.exhausted = true
 				return false
 			}

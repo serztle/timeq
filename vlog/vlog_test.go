@@ -92,20 +92,20 @@ func TestLogShrink(t *testing.T) {
 	require.NoError(t, err)
 
 	iter := log.At(firstLoc, true)
-	require.True(t, iter.Next())
+	require.True(t, iter.Next(log))
 	require.Equal(t, item.Item{
 		Key:  1,
 		Blob: []byte("1"),
 	}, iter.Item())
-	require.False(t, iter.Next())
+	require.False(t, iter.Next(log))
 
 	iter = log.At(sndLoc, true)
-	require.True(t, iter.Next())
+	require.True(t, iter.Next(log))
 	require.Equal(t, item.Item{
 		Key:  2,
 		Blob: []byte("2"),
 	}, iter.Item())
-	require.False(t, iter.Next())
+	require.False(t, iter.Next(log))
 
 	require.NoError(t, iter.Err())
 	require.NoError(t, log.Close())
