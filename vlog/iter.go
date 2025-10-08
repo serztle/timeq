@@ -11,7 +11,6 @@ import (
 //
 // Possible ideas to get down from 104 to 64:
 //
-//   - Use only one len field. -> -8
 //   - Always pass Item out on Next() as out param. -> -32
 //     -> Not possible, because the item might not be consumed directly
 //     as we might realize that another iter has more priority.
@@ -22,7 +21,7 @@ type Iter struct {
 	firstKey         item.Key
 	currOff, prevOff item.Off
 	item             item.Item
-	currLen, prevLen item.Off   // Only one length field, 8 bytes.
+	currLen          item.Off
 	exhausted        bool       // Merge flags with currLen to a currLenFlags field, 8 bytes.
 	continueOnErr    bool
 }
@@ -61,7 +60,6 @@ func (li *Iter) Next(log *Log) error {
 	}
 
 	li.prevOff = li.currOff
-	li.prevLen = li.currLen
 
 	// advance iter to next position:
 	li.currOff += item.Off(li.item.StorageSize())
@@ -92,7 +90,7 @@ func (li *Iter) CurrentLocation() item.Location {
 	return item.Location{
 		Key: li.item.Key,
 		Off: li.prevOff,
-		Len: li.prevLen,
+		Len: li.currLen + 1,
 	}
 }
 
