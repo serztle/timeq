@@ -1,6 +1,8 @@
 package vlog
 
 import (
+	"errors"
+
 	"github.com/sahib/timeq/item"
 )
 
@@ -16,42 +18,40 @@ import (
 //   - Do not use exhausted, set len to 0.
 //     -> Does not work, as currLen is zero before last call to Next()
 //   - continueOnErr can be part of Log. -8 (if exhausted goes away too)
-//   - error could be returned on Next() directly.
 type Iter struct {
 	firstKey         item.Key
 	currOff, prevOff item.Off
 	item             item.Item
-	// log              *Log       // It is possible to give the Next() function this attribute, which saves 8 bytes.
-	err              error      // Return for each Next() call, which saves 16 bytes.
 	currLen, prevLen item.Off   // Only one length field, 8 bytes.
 	exhausted        bool       // Merge flags with currLen to a currLenFlags field, 8 bytes.
 	continueOnErr    bool
 }
 
-func (li *Iter) Next(log *Log) bool {
+var ErrorIterExhausted = errors.New("Iterator is exhausted!")
+
+func (li *Iter) Next(log *Log) error {
 	if li.currLen == 0 || li.exhausted {
 		li.exhausted = true
-		return false
+		return ErrorIterExhausted
 	}
 
 	if len(log.mmap) > 0 && li.currOff >= item.Off(log.size) {
 		// stop iterating when end of log reached.
 		li.exhausted = true
-		return false
+		return ErrorIterExhausted
 	}
 
 	for {
 		if err := log.readItemAt(li.currOff, &li.item); err != nil {
 			if !li.continueOnErr {
-				li.err = err
 				li.exhausted = true
-				return false
+				return err
 			}
 
 			li.currOff = log.findNextItem(li.currOff)
 			if li.currOff >= item.Off(log.size) {
 				li.exhausted = true
-				return false
+				return ErrorIterExhausted
 			}
 
 			continue
@@ -67,7 +67,7 @@ func (li *Iter) Next(log *Log) bool {
 	li.currOff += item.Off(li.item.StorageSize())
 	li.currLen--
 
-	return true
+	return nil
 }
 
 func (li *Iter) Exhausted() bool {
@@ -96,6 +96,10 @@ func (li *Iter) CurrentLocation() item.Location {
 	}
 }
 
-func (li *Iter) Err() error {
-	return li.err
+func IterReportNonExhaustError(err error) error {
+	if err == ErrorIterExhausted {
+		return nil
+	} else {
+		return err
+	}
 }
